@@ -1,0 +1,92 @@
+# Cloud Run への継続デプロイ（CD）。
+#
+# ★ いまはオフにしてある ★
+#   `if: vars.ENABLE_CD == 'true'` で全ジョブを止めている。
+#   リポジトリ変数 ENABLE_CD が未設定のうちは、push しても手動実行しても
+#   ジョブは skipped になり、GCP には一切触れない。
+#
+#   有効化するとき:
+#     Settings → Secrets and variables → Actions → Variables に ENABLE_CD=true を追加
+#     （事前に DEPLOY.md「パターン C」の Workload Identity 連携を済ませておくこと）
+#
+#   一時的に止めたいだけなら ENABLE_CD を false にするか、
+#   Actions タブ右上の "..." → Disable workflow でも止められる。
+
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "web/**"
+      - "services/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "cloudbuild.yaml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+# 同じブランチのデプロイが重ならないようにする。
+concurrency:
+  group: deploy-cloud-run
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # ここが CD のオン／オフのスイッチ。
+    if: vars.ENABLE_CD == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # Workload Identity 連携に必要
+
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'shiki-meguri' }}
+      REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
+      REPO: ${{ vars.GCP_ARTIFACT_REPO || 'shiki-meguri' }}
+      SERVICE: ${{ vars.GCP_RUN_SERVICE || 'shiki-api' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # デプロイ前にテストを通す。ローカルと同じコンテナで実行する。
+      - name: テスト
+        run: docker compose --profile test run --rm test
+
+      - name: GCP 認証（Workload Identity）
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      # ローカルの compose と同じ Dockerfile を Cloud Build で焼く。
+      - name: イメージのビルド
+        run: |
+          gcloud builds submit --config cloudbuild.yaml \
+            --substitutions="_REGION=${REGION},_REPO=${REPO},_TAG=${GITHUB_SHA}" \
+            --project="${PROJECT_ID}"
+
+      - name: Cloud Run へデプロイ
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/api:${{ github.sha }}
+          # 秘密情報は焼き込まず Secret Manager から注入する（DEPLOY.md 参照）。
+          env_vars: |-
+            APP_ENV=prod
+            AGENT_TRANSPORT=inproc
+            DB_DRIVER=firestore
+            GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }}
+            AGENT_SPEND_LIMIT_YEN=0
+
+      - name: 疎通確認
+        run: |
+          url="${{ steps.deploy.outputs.url }}"
+          echo "deployed: $url"
+          curl -fsS --retry 5 --retry-delay 5 "$url/healthz"

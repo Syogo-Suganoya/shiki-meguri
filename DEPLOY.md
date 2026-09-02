@@ -1,7 +1,8 @@
 # デプロイ手順
 
 シキめぐりを Google Cloud（Cloud Run）へ載せる手順。
-**CLI（gcloud）** と **画面（Cloud Console）** の 2 通りを並べて書く。
+**CLI（gcloud）**・**画面（Cloud Console）**・**GitHub Actions（CD）** の 3 通りを書く。
+CD は現在オフにしてある（パターン C 参照）。
 
 開発手順は [CONTRIBUTING.md](CONTRIBUTING.md)、プロダクトの説明は [README.md](README.md)。
 
@@ -274,6 +275,107 @@ Artifact Registry の画面に `api` イメージが増えていれば成功。
 Cloud Run の画面に出ている URL の末尾に `/ui/` を付けて開く。
 チャットに「明日16時、品川の結婚式にお呼ばれ」と送り、候補提示 → 承認 → タイムラインまで
 進めば成功。エージェントの判断は Cloud Run の **ログ** タブにも構造化ログとして出る。
+
+---
+
+# パターン C: GitHub Actions（CD）
+
+`main` への push で自動デプロイする。ワークフローは
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml)。
+
+> **いまはオフにしてある。**
+> ジョブに `if: vars.ENABLE_CD == 'true'` を掛けてあり、リポジトリ変数 `ENABLE_CD` が
+> 無いうちは push しても手動実行してもジョブは skipped になる。GCP には一切触れない。
+
+やることは 3 つ。1〜2 は有効化するときに一度だけ行う。
+
+## 1. デプロイ用サービスアカウント
+
+```bash
+export PROJECT_ID=shiki-meguri
+export REPO_SLUG=Syogo-Suganoya/shiki-meguri
+
+gcloud iam service-accounts create github-deployer \
+  --display-name="GitHub Actions からのデプロイ用" --project="$PROJECT_ID"
+
+DEPLOY_SA="github-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
+
+for role in roles/run.admin roles/cloudbuild.builds.editor \
+            roles/artifactregistry.writer roles/iam.serviceAccountUser \
+            roles/storage.admin; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${DEPLOY_SA}" --role="$role"
+done
+```
+
+`iam.serviceAccountUser` は Cloud Run のランタイム SA を「使う」ために要る。
+`storage.admin` は Cloud Build がソースを置くバケット用。
+
+## 2. Workload Identity 連携（鍵を置かない）
+
+サービスアカウントの JSON 鍵を GitHub に置くのは避け、OIDC で短命の資格情報を得る。
+
+```bash
+gcloud iam workload-identity-pools create github \
+  --location=global --project="$PROJECT_ID"
+
+gcloud iam workload-identity-pools providers create-oidc github \
+  --location=global --workload-identity-pool=github \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='${REPO_SLUG}'" \
+  --project="$PROJECT_ID"
+```
+
+`attribute-condition` を必ず入れる。これが無いと**他人のリポジトリからも**この
+サービスアカウントを借りられてしまう。
+
+このリポジトリからの借用だけを許可する。
+
+```bash
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+POOL="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github"
+
+gcloud iam service-accounts add-iam-policy-binding "$DEPLOY_SA" \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/${POOL}/attribute.repository/${REPO_SLUG}" \
+  --project="$PROJECT_ID"
+
+echo "GCP_WIF_PROVIDER=${POOL}/providers/github"
+echo "GCP_DEPLOY_SA=${DEPLOY_SA}"
+```
+
+## 3. GitHub 側の設定
+
+Settings → Secrets and variables → **Actions** → **Variables** に登録する
+（いずれも秘密情報ではないので Secrets ではなく Variables でよい）。
+
+| 変数 | 値 | 必須 |
+|---|---|---|
+| `ENABLE_CD` | `true`（**これを入れるまで CD は動かない**） | ○ |
+| `GCP_WIF_PROVIDER` | 上の `echo` が出した provider のパス | ○ |
+| `GCP_DEPLOY_SA` | `github-deployer@shiki-meguri.iam.gserviceaccount.com` | ○ |
+| `GCP_PROJECT_ID` | `shiki-meguri`（既定値と同じなら省略可） | — |
+| `GCP_REGION` | `asia-northeast1`（同上） | — |
+| `GCP_ARTIFACT_REPO` | `shiki-meguri`（同上） | — |
+| `GCP_RUN_SERVICE` | `shiki-api`（同上） | — |
+
+## 動き
+
+1. `main` に push（`app/` `web/` `services/` `tests/` などが変わったとき）
+2. ローカルと同じコンテナでテストを実行。落ちたらここで止まる
+3. Cloud Build でイメージをビルドし、コミットSHAをタグにして push
+4. Cloud Run へデプロイ
+5. `/healthz` を叩いて疎通確認
+
+初回だけは**パターン A か B で一度デプロイしておく**とよい。Firestore・
+Artifact Registry・Secret Manager・TTL ポリシー・Cloud Scheduler の作成は
+CD に含めていない（作り直しの事故を避けるため、インフラは手で作る）。
+
+## 止めたいとき
+
+- `ENABLE_CD` を `false` にするか、変数ごと削除する
+- または Actions タブ → 該当ワークフロー → 右上 "..." → **Disable workflow**
 
 ---
 
