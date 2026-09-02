@@ -1,0 +1,129 @@
+services:
+  # API Gateway。既定では agent を同一プロセスで動かす（AGENT_TRANSPORT=inproc）。
+  # 2 サービス構成を試すときは AGENT_TRANSPORT=http にして agent を起動する。
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    image: shiki-meguri-api
+    ports:
+      # 他プロジェクトと同時に動かすときは API_PORT で逃がす
+      - "${API_PORT:-8080}:8080"
+    environment:
+      PORT: 8080
+      APP_ENV: local
+      AGENT_TRANSPORT: ${AGENT_TRANSPORT:-inproc}
+      AGENT_BASE_URL: http://agent:8081
+      # mock | live … 外部APIの実接続切替（キーが入るまでは mock）
+      GEMINI_MODE: ${GEMINI_MODE:-mock}
+      YOUCAM_MODE: ${YOUCAM_MODE:-mock}
+      EKISPERT_MODE: ${EKISPERT_MODE:-mock}
+      RENTAL_MODE: ${RENTAL_MODE:-mock}
+      GMI_MODE: ${GMI_MODE:-mock}
+      DB_DRIVER: ${DB_DRIVER:-firestore}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-shiki-meguri-local}
+      FIRESTORE_EMULATOR_HOST: ${FIRESTORE_EMULATOR_HOST:-firestore:8200}
+      # 実APIに差し替えるときだけ設定する（.env から注入）
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      YOUCAM_API_KEY: ${YOUCAM_API_KEY:-}
+      YOUCAM_SECRET_KEY: ${YOUCAM_SECRET_KEY:-}
+      EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
+      EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
+      GMI_API_KEY: ${GMI_API_KEY:-}
+      # ガバナンス（設計書 §7）。0 = エージェントは 1 円も自律確定できない。
+      AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-0}
+    volumes:
+      - ./app:/srv/app
+      - ./web:/srv/web
+      - ./tests:/srv/tests
+    depends_on:
+      - firestore
+    command: sh -c "uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --reload"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # AGENT_TRANSPORT=http のときだけ使う（`docker compose --profile split up`）
+  agent:
+    profiles: ["split"]
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    image: shiki-meguri-agent
+    ports:
+      # api からは常にコンテナ間の 8081 を使う。ホスト側は他プロジェクトと衝突しない番号に逃がす。
+      - "8091:8081"
+    environment:
+      PORT: 8081
+      APP_ENV: local
+      GEMINI_MODE: ${GEMINI_MODE:-mock}
+      YOUCAM_MODE: ${YOUCAM_MODE:-mock}
+      EKISPERT_MODE: ${EKISPERT_MODE:-mock}
+      RENTAL_MODE: ${RENTAL_MODE:-mock}
+      GMI_MODE: ${GMI_MODE:-mock}
+      DB_DRIVER: ${DB_DRIVER:-firestore}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-shiki-meguri-local}
+      FIRESTORE_EMULATOR_HOST: ${FIRESTORE_EMULATOR_HOST:-firestore:8200}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      YOUCAM_API_KEY: ${YOUCAM_API_KEY:-}
+      YOUCAM_SECRET_KEY: ${YOUCAM_SECRET_KEY:-}
+      EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
+      EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
+      GMI_API_KEY: ${GMI_API_KEY:-}
+      AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-0}
+    volumes:
+      - ./app:/srv/app
+      - ./tests:/srv/tests
+    depends_on:
+      - firestore
+    command: sh -c "uvicorn app.agent.main:app --host 0.0.0.0 --port 8081 --reload"
+
+  # フロント単体で触りたいとき（`docker compose --profile web up`）
+  web:
+    profiles: ["web"]
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+    image: shiki-meguri-web
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./web:/srv/web
+
+  # データの置き場。開発はエミュレータ、本番は Firestore 本体（設計書 §6）。
+  firestore:
+    image: google/cloud-sdk:emulators
+    command: >
+      gcloud emulators firestore start
+      --host-port=0.0.0.0:8200
+      --project=${GOOGLE_CLOUD_PROJECT:-shiki-meguri-local}
+    ports:
+      # コンテナ間は 8200。ホスト側は他プロジェクトと衝突しない番号に逃がせる。
+      - "${FIRESTORE_PORT:-8200}:8200"
+
+  # アーキテクチャ図の生成。`docker compose --profile docs run --rm docs`
+  docs:
+    profiles: ["docs"]
+    build:
+      context: .
+      dockerfile: services/docs/Dockerfile
+    image: shiki-meguri-docs
+    volumes:
+      - ./docs:/srv/docs
+
+  # テスト実行用。`docker compose run --rm test`
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    image: shiki-meguri-api
+    environment:
+      # テストは memory ドライバ。エミュレータ無しで速く回す。
+      DB_DRIVER: memory
+    volumes:
+      - ./app:/srv/app
+      - ./tests:/srv/tests
+    command: python -m pytest -q

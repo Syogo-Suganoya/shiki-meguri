@@ -1,0 +1,28 @@
+# Cloud Build。ローカルの compose と同じ Dockerfile を参照する（設計書 §8）。
+#
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions=_REGION=asia-northeast1,_REPO=shiki-meguri
+#
+# 既定では api イメージのみ作る。2 サービス構成にするときは _BUILD_AGENT=true。
+
+substitutions:
+  _REGION: asia-northeast1
+  _REPO: shiki-meguri
+  _TAG: latest
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${_TAG}"
+
+steps:
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - services/api/Dockerfile
+      - -t
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${_TAG}"
+      - .
+
+options:
+  logging: CLOUD_LOGGING_ONLY

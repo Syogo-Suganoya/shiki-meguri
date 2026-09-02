@@ -1,0 +1,11 @@
+{
+  "name": "シキめぐり",
+  "short_name": "シキめぐり",
+  "description": "冠婚葬祭レンタル × 移動エージェント",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14131a",
+  "theme_color": "#1b1a22",
+  "lang": "ja"
+}
