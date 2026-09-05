@@ -133,7 +133,7 @@ class ChatMessage(BaseModel):
     uid: str
     role: Literal["user", "agent"]
     text: str
-    kind: Literal["info", "consent", "timeline", "delay", "return", "error"] = "info"
+    kind: Literal["info", "consent", "timeline", "return", "error"] = "info"
     event_id: str | None = None
     created_at: datetime
 
@@ -261,11 +261,10 @@ class TransitLeg(BaseModel):
     fare_yen: int = 0
     transfers: int = 0
     lines: list[str] = Field(default_factory=list)
-    delay_minutes: int = 0
 
     @property
     def total_minutes(self) -> int:
-        return self.duration_minutes + self.delay_minutes
+        return self.duration_minutes
 
 
 StepKind = Literal["depart", "transit", "pickup", "dressing", "arrive", "ceremony", "return"]
@@ -286,24 +285,12 @@ class TimelineStep(BaseModel):
         return int((self.ends_at - self.starts_at).total_seconds() // 60)
 
 
-class RecalcRecord(BaseModel):
-    """再計算履歴。何を根拠に何分ずらしたかを残す（設計書 §7-4）。"""
-
-    recalculated_at: datetime
-    reason: str
-    delay_minutes: int
-    previous_departure_at: datetime
-    new_departure_at: datetime
-    feasible: bool
-
-
 class RoutePlan(BaseModel):
-    """events/{eventId}.route — 当日タイムラインと再計算履歴。"""
+    """events/{eventId}.route — 開式から逆算した当日タイムライン。"""
 
     steps: list[TimelineStep] = Field(default_factory=list)
     legs: list[TransitLeg] = Field(default_factory=list)
     generated_at: datetime
-    history: list[RecalcRecord] = Field(default_factory=list)
     feasible: bool = True
     warning: str | None = None
 
@@ -392,6 +379,7 @@ class ConsentStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    SUPERSEDED = "superseded"  # 別の案に差し替えたため取り下げ
 
 
 class ConsentRequest(BaseModel):

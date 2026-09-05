@@ -102,20 +102,6 @@ async def test_却下すると候補提示に戻る(orchestrator: Orchestrator):
     assert "取り下げ" in _texts(messages)
 
 
-async def test_遅延の問い合わせで再計算される(orchestrator: Orchestrator, deps: Deps):
-    await orchestrator.handle_message("u1", "最寄りは吉祥寺です")
-    await orchestrator.handle_message("u1", "明日16時、品川の結婚式")
-    await orchestrator.handle_message("u1", "1番")
-    _, event = await orchestrator.handle_message("u1", "承認")
-    before = event.route.departure_at
-
-    deps.transit.inject(event.route.legs[0].lines[0], 20)
-    messages, event = await orchestrator.handle_message("u1", "電車が遅れてるみたい")
-
-    assert event.route.departure_at == before - timedelta(minutes=20)
-    assert "遅れ" in _texts(messages)
-
-
 async def test_返却を尋ねると期限を答える(orchestrator: Orchestrator):
     await orchestrator.handle_message("u1", "最寄りは吉祥寺です")
     await orchestrator.handle_message("u1", "明日16時、品川の結婚式")

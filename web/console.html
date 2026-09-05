@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>シキめぐり</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="./favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#f6f3ec" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f6f3ec; --panel:#fff; --line:#e4dccb;
+    --text:#2a2723; --muted:#7d7466;
+    --kei:#b3402e; --kei-soft:#fbf1ee; --kin:#c69a4b; --chou:#4a4658;
+    --ok:#4e7a52;
+    --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  body{
+    margin:0;background:var(--bg);color:var(--text);font-size:14px;line-height:1.85;
+    font-family:"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;
+    /* 中身が短い画面でも、下の帯は窓の底に置く。 */
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  button{font-family:inherit}
+  .dualband{height:12px;display:grid;grid-template-columns:1fr 1fr}
+  .dualband .k{background:repeating-linear-gradient(90deg,var(--kei) 0 40px,#fff 40px 80px)}
+  .dualband .c{background:repeating-linear-gradient(90deg,var(--chou) 0 40px,#e8e6ee 40px 80px)}
+
+  /* ---------------------------------------------------------- 式の見出し */
+  .masthead{background:var(--panel);border-bottom:1px solid var(--line);padding:15px 24px}
+  .masthead .inner{max-width:1060px;margin:0 auto;display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
+  .home{font-family:var(--mincho);font-size:19px;letter-spacing:.14em;font-weight:700;color:inherit;text-decoration:none}
+  .home small{display:block;font-family:inherit;font-size:10px;letter-spacing:.06em;color:var(--muted);font-weight:400}
+  .event-head{flex:1;min-width:240px}
+  .event-head .kind{font-size:11px;letter-spacing:.14em;color:var(--kei)}
+  .event-head .kind.chou{color:var(--chou)}
+  .event-head .when{font-family:var(--mincho);font-size:18px;letter-spacing:.06em}
+  .event-head .where{font-size:12px;color:var(--muted)}
+  .countdown{text-align:right;min-width:140px}
+  .countdown .num{font-family:var(--mincho);font-size:26px;letter-spacing:.04em;color:var(--kei);line-height:1.25}
+  .countdown .lbl{font-size:11px;color:var(--muted);letter-spacing:.08em}
+  .countdown.done .num{color:var(--chou)}
+
+  /* ------------------------------------------------------------ 道のり */
+  .steps{background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto}
+  .steps .inner{max-width:1060px;margin:0 auto;display:flex;padding:0 24px}
+  .steps button{
+    flex:1;min-width:96px;background:none;border:none;border-bottom:2px solid transparent;
+    padding:9px 4px 8px;font-size:12.5px;letter-spacing:.06em;color:var(--muted);text-align:center;cursor:default;
+  }
+  .steps button .n{display:block;font-size:9.5px;letter-spacing:.14em;color:#c3b8a4}
+  .steps button.done{color:var(--text);cursor:pointer}
+  .steps button.done:hover{color:var(--kei)}
+  .steps button.on{color:var(--kei);border-bottom-color:var(--kei);font-weight:500}
+  .steps button.on .n{color:var(--kei)}
+
+  /* ------------------------------------------------------------ 骨組み */
+  main{max-width:1060px;margin:0 auto;padding:26px 24px 20px;display:grid;gap:22px;grid-template-columns:1fr 340px;align-items:start;flex:1 0 auto;width:100%}
+  main.solo{grid-template-columns:min(760px,100%);justify-content:center}
+  .stage{background:var(--panel);border:1px solid var(--line);padding:26px 28px;min-width:0}
+  .stage > h1{
+    margin:0 0 4px;font-family:var(--mincho);font-size:21px;letter-spacing:.06em;font-weight:700;
+  }
+  .stage > .lead{margin:0 0 22px;color:var(--muted);font-size:13px}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .sep{border:none;border-top:1px solid var(--line);margin:22px 0}
+
+  button.btn{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:2px;padding:8px 16px;font-size:13px;cursor:pointer}
+  button.btn:hover:not(:disabled){border-color:var(--kei);color:var(--kei)}
+  button.btn:disabled{opacity:.45;cursor:not-allowed}
+  button.btn.primary{background:var(--kei);border-color:var(--kei);color:#fff}
+  button.btn.primary:hover:not(:disabled){color:#fff;opacity:.88}
+  button.btn.big{padding:12px 30px;font-size:14.5px;letter-spacing:.06em}
+  button.btn.small{font-size:12px;padding:4px 11px}
+  .link{background:none;border:none;color:var(--muted);font-size:12.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0}
+  .link:hover{color:var(--kei)}
+
+  /* ------------------------------------------------------- 衣装をえらぶ */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px}
+  .card{border:1px solid var(--line);border-top:3px solid var(--line);padding:13px;display:flex;flex-direction:column;gap:7px}
+  .card.on{border-color:var(--kei);border-top-color:var(--kei)}
+  .swatch{height:96px;display:flex;align-items:flex-end;justify-content:flex-end;padding:5px;font-size:9px;color:rgba(0,0,0,.4)}
+  .card .nm{font-family:var(--mincho);font-size:15.5px;font-weight:700;line-height:1.5}
+  .card .fee{color:var(--kei);font-weight:500}
+  .card .why{font-size:12px;color:var(--muted);line-height:1.7}
+  /* 選んだものが、選ばなかったものより引っ込んで見えないようにする。 */
+  .card .chosen{
+    background:var(--kei);color:#fff;padding:7px 10px;border-radius:2px;
+    font-size:12.5px;line-height:1.5;text-align:center;
+  }
+  .card .chosen small{display:block;font-size:10.5px;opacity:.85;font-variant-numeric:tabular-nums}
+  .pill.rec{border-color:var(--kei);color:var(--kei)}
+  .swap{border-top:1px dashed var(--line);padding-top:9px;display:grid;gap:8px}
+  .swap p{margin:0;font-size:12px;color:var(--kei);line-height:1.6}
+
+  /* ----------------------------------------------------------- 確認する */
+  .quote{font-size:14.5px;line-height:1.9}
+  .breakdown{margin:20px 0 0;display:grid;gap:5px;font-size:13px}
+  .breakdown div{display:flex;justify-content:space-between;gap:16px}
+  .breakdown .total{border-top:1px solid var(--line);margin-top:7px;padding-top:9px;align-items:baseline}
+  .breakdown .total .yen{font-family:var(--mincho);font-size:23px;font-weight:700}
+  .facts{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13px;margin:0}
+  .facts dt{color:var(--muted);white-space:nowrap}
+  .facts dd{margin:0}
+  .gate-note{font-size:11.5px;color:var(--muted);margin-top:14px}
+  details.compare{margin-top:20px}
+  details.compare > summary{font-size:12.5px;color:var(--muted);cursor:pointer}
+  details.compare > summary:hover{color:var(--kei)}
+
+  /* ------------------------------------------------------- 予定を入れる */
+  .form{display:grid;gap:14px;max-width:440px}
+  .form label{display:grid;gap:5px}
+  .form label > span{font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+  .form input,.form select{
+    font-family:inherit;font-size:14px;color:var(--text);background:var(--panel);
+    border:1px solid var(--line);border-radius:2px;padding:9px 11px;width:100%;
+  }
+  .form input:focus,.form select:focus{outline:none;border-color:var(--kei)}
+
+  /* --------------------------------------------------------- 一日の流れ */
+  .clock{display:grid;grid-template-columns:76px 20px 1fr;align-items:start}
+  .clock .t{font-family:var(--mincho);font-weight:700;font-variant-numeric:tabular-nums;color:var(--kin);white-space:nowrap;padding-top:1px}
+  .clock .rail{position:relative;align-self:stretch}
+  .clock .rail::before{content:"";position:absolute;left:7px;top:11px;bottom:-4px;width:1px;background:var(--line)}
+  .clock:last-of-type .rail::before{display:none}
+  .clock .dot{position:absolute;left:3px;top:7px;width:9px;height:9px;border-radius:50%;background:#fff;border:1px solid var(--line)}
+  .clock.key .dot{background:var(--kei);border-color:var(--kei)}
+  .clock.key .t{color:var(--kei)}
+  .clock .what{padding-bottom:18px}
+  .clock .what b{font-weight:500}
+  .clock .what small{display:block;color:var(--muted);font-size:12px}
+  .clock.past{opacity:.5}
+  .nowline{display:grid;grid-template-columns:76px 20px 1fr;align-items:center;margin:-7px 0 11px}
+  .nowline .lbl{font-size:10.5px;letter-spacing:.1em;color:var(--kei);text-align:right}
+  .nowline .bar{grid-column:2 / -1;height:1px;background:var(--kei);position:relative}
+  .nowline .bar::before{content:"";position:absolute;left:4px;top:-3px;width:7px;height:7px;background:var(--kei);border-radius:50%}
+  .warnline{background:var(--kei-soft);border-left:4px solid var(--kei);padding:10px 13px;font-size:12.5px;margin-bottom:18px}
+  /* 過去の段階を見ているときに、いまへ帰る道を本文にも置く。 */
+  .lookback{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--bg);border:1px solid var(--line);padding:9px 14px;margin:-6px 0 20px;font-size:12.5px;color:var(--muted);
+  }
+  .okline{background:#f1f5f0;border-left:4px solid var(--ok);padding:10px 13px;font-size:12.5px;margin-bottom:18px}
+
+  /* -------------------------------------------------------------- 会話 */
+  .talk-panel{background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column}
+  .talk-panel > h2{
+    margin:0;padding:11px 16px;font-family:var(--mincho);font-size:14px;letter-spacing:.12em;font-weight:700;
+    background:var(--bg);border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .talk{display:flex;flex-direction:column;gap:9px;max-height:52vh;overflow-y:auto;padding:15px 15px 0}
+  .msg{max-width:88%;padding:9px 13px;border:1px solid var(--line);border-radius:2px;white-space:pre-wrap;font-size:13px;line-height:1.8}
+  .msg.agent{align-self:flex-start;border-left:3px solid var(--line)}
+  .msg.user{align-self:flex-end;background:var(--kei-soft);border-color:#e6c5bc}
+  .msg .meta{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+  .msg.agent.consent{border-left-color:var(--kin)}
+  .msg.agent.return{border-left-color:var(--ok)}
+  .msg.agent.error{border-left-color:var(--kei)}
+  .say{display:flex;gap:8px;padding:13px 15px;border-top:1px solid var(--line)}
+  .say input{flex:1;background:var(--panel);color:var(--text);font-family:inherit;border:1px solid var(--line);border-radius:2px;padding:10px 12px;font-size:13px}
+  .say input:focus{outline:none;border-color:var(--kei)}
+  .hints{display:flex;gap:7px;flex-wrap:wrap;padding:11px 15px 0}
+  .hints button{font-size:12px;padding:4px 10px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:2px;cursor:pointer}
+  .hints button:hover{border-color:var(--kei);color:var(--kei)}
+
+  /* -------------------------------------------------------- 別ページ扱い */
+  .aside-nav{max-width:1060px;margin:0 auto;padding:0 24px 46px;display:flex;gap:20px;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mincho);color:var(--kei);font-weight:700;font-size:12px;letter-spacing:.06em;white-space:nowrap}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;font-size:10px;padding:1px 8px;border:1px solid var(--line);color:var(--muted);border-radius:2px}
+  .pill.gate{border-color:var(--kin);color:var(--kin)}
+  .pill.auto{border-color:var(--chou);color:var(--chou)}
+  code{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace}
+
+  /* ------------------------------------------- 「AIに相談」のサイドバー */
+  .talk-open{
+    position:fixed;right:22px;bottom:22px;z-index:8;
+    background:var(--panel);border:1px solid var(--kei);color:var(--kei);border-radius:2px;
+    padding:11px 20px;font-size:13.5px;letter-spacing:.06em;cursor:pointer;
+    box-shadow:0 6px 20px rgba(42,39,35,.14);display:flex;align-items:center;gap:9px;
+  }
+  .talk-open:hover{background:var(--kei);color:#fff}
+  .talk-open .badge{
+    min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--kei);color:#fff;
+    font-size:11px;line-height:18px;text-align:center;
+  }
+  .talk-open:hover .badge{background:#fff;color:var(--kei)}
+  .scrim{position:fixed;inset:0;z-index:20;background:rgba(42,39,35,.18);display:flex;justify-content:flex-end}
+  .drawer{
+    width:min(400px,100%);height:100%;display:flex;flex-direction:column;
+    background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 34px rgba(42,39,35,.18);
+  }
+  .drawer .talk-panel{border:none;flex:1;min-height:0}
+  .drawer .talk{max-height:none;flex:1}
+  /* 押しやすさのために見た目より広く取る。負の margin で見出しの高さは変えない。 */
+  .talk-panel > h2 .close{
+    background:none;border:none;font-size:20px;line-height:1;color:var(--muted);cursor:pointer;
+    padding:11px 14px;margin:-11px -14px -11px 0;
+  }
+  .talk-panel > h2 .close:hover{color:var(--kei)}
+  .talk-panel > h2 .close:active{color:var(--kei);background:var(--kei-soft)}
+
+  /* 動作確認用。?dev=1 のときだけ最下部に出す。通常の利用者には見せない。 */
+  .devbar{border-top:1px dashed var(--line);background:#efeadf;padding:10px 24px;font-size:12px;color:var(--muted)}
+  .devbar .inner{max-width:1060px;margin:0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .devbar select,.devbar button{font-size:12px;padding:3px 9px;border:1px solid var(--line);background:var(--panel);border-radius:2px;font-family:inherit;cursor:pointer}
+
+  #toast{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    max-width:min(520px,90vw);padding:11px 17px;border:1px solid var(--kei);background:var(--panel);
+    font-size:13px;box-shadow:0 6px 20px rgba(42,39,35,.14);opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;
+  }
+  #toast.show{opacity:1}
+  #toast.error{background:var(--kei-soft)}
+
+  @media(max-width:880px){
+    main{grid-template-columns:1fr;padding:18px 16px 16px}
+    .stage{padding:20px 18px}
+    .talk{max-height:40vh}
+    /* 見出しは 1 行目に「名前＋残り時間」、2 行目に式の詳細を置いて縦を詰める。 */
+    .masthead{padding:11px 16px}
+    .masthead .inner{gap:10px 14px;align-items:center}
+    .home{font-size:16px;letter-spacing:.1em}
+    .home small{display:none}
+    .event-head{order:2;flex-basis:100%;min-width:0}
+    .event-head .when{font-size:16px}
+    .countdown{order:1;min-width:0;margin-left:auto}
+    .countdown .num{font-size:21px}
+    .steps .inner{padding:0}
+    .steps button{min-width:62px;font-size:12px;letter-spacing:0}
+    .aside-nav{padding:0 16px 34px;gap:14px}
+  }
+</style>
+</head>
+<body>
+<div class="dualband"><div class="k"></div><div class="c"></div></div>
+
+<div class="masthead"><div class="inner">
+  <a class="home" href="./index.html">シキめぐり<small>機能と使い方</small></a>
+  <div class="event-head" id="event-head"></div>
+  <div class="countdown" id="countdown"></div>
+</div></div>
+
+<div class="steps"><div class="inner" id="steps"></div></div>
+
+<main id="main">
+  <div id="stage"></div>
+</main>
+
+<div class="aside-nav" id="aside-nav"></div>
+
+<!-- 「AIに相談」。予定を登録するまでは出さず、以降は右のサイドバーで開く。 -->
+<div class="scrim" id="talk-scrim" hidden><div class="drawer" id="talk-mount"></div></div>
+<button class="talk-open" id="talk-open" hidden></button>
+
+<div class="talk-panel" id="talk-panel" hidden>
+  <h2><span>AIに相談</span><button class="close" id="talk-close" title="閉じる">×</button></h2>
+  <div class="talk" id="talk"></div>
+  <div class="hints" id="hints"></div>
+  <form class="say" id="say-form">
+    <input id="say-text" placeholder="例：明日16時、品川の結婚式にお呼ばれ" autocomplete="off" />
+    <button class="btn primary" type="submit">送信</button>
+  </form>
+</div>
+
+<div class="dualband"><div class="k"></div><div class="c"></div></div>
+<div class="devbar" id="devbar" hidden></div>
+<div id="toast"></div>
+
+<script>
+const API = "/api";
+// 利用者はブラウザごとに分ける。固定の uid にすると、別の端末やシークレットウィンドウで
+// 開いても他人の手配の途中から始まってしまう。認証はまだ無いので、ここで代用する。
+const UID = (() => {
+  const KEY = "shiki.uid";
+  const make = () => "u-" + (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 12);
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved) return saved;
+    const fresh = make();
+    localStorage.setItem(KEY, fresh);
+    return fresh;
+  } catch {
+    // localStorage が使えない設定なら、そのタブ限りの id で動かす。
+    return make();
+  }
+})();
+const DEV = new URLSearchParams(location.search).get("dev") === "1";
+
+// view: 進行中の一本道（flow）か、そこから寄り道した別ページか。
+// look: 利用者が道のりの帯から過去の段階を見に行ったときだけ入る。
+const state = {
+  event: null, view: "flow", look: null, autoStage: null,
+  chatOpen: false, unread: 0,
+  stations: ["東京"], intake: null,  // intake は {phase:"form"|"check", draft}
+  swapping: null,                    // 「これに変更する」を押した衣装の id
+};
+let lastMessageAt = null;
+
+const EVENT_KIND = { wedding:"結婚式お呼ばれ", seijin:"成人式・卒業式", tourism:"観光着物", funeral:"葬儀" };
+const RENTAL_STATE = { proposed:"起案中", awaiting_consent:"承認待ち", reserved:"予約確定", picked_up:"受取済み", returning:"返却中", returned:"返却済み", overdue:"延滞中" };
+const PICKUP_KIND = { home_delivery:"自宅へ配送", store:"店舗で受取", locker:"ロッカーで受取" };
+const RETURN_METHOD = { convenience_store:"コンビニから発送", store:"店舗に返す", locker:"ロッカーに返す", pickup_service:"集荷に出す" };
+const MOVIE_STATUS = { draft:"写真あり", consent_required:"写っている方の確認待ち", awaiting_consent:"制作費の承認待ち", rendering:"生成中", completed:"完成" };
+const COLORS = {
+  "コーラルピンク":"#f0a08c","アイボリー":"#ece3d0","ラベンダー":"#b4a5d6","スモーキーブルー":"#8aa6c0",
+  "テラコッタ":"#c1714b","オリーブ":"#8a8f5c","ロイヤルブルー":"#3f5fb0","ワインレッド":"#8f3a4a","ブラック":"#2a2a30",
+};
+const CONSENT_HEAD = {
+  reserve: { title:"この内容で確定しますか", lead:"承認すると、ここではじめてレンタルの予約が入ります。" },
+  extend:  { title:"返却期限を延ばしますか", lead:"承認すると、延長料金が発生します。" },
+  movie:   { title:"この構成でつくりますか", lead:"承認すると、映像とBGMの生成が始まります。" },
+};
+
+// 一本道の段階。順序そのものが利用者の動線なので、番号を振る。
+const STEPS = [
+  { id:"intake",  label:"予定" },
+  { id:"outfit",  label:"衣装" },
+  { id:"confirm", label:"確認" },
+  { id:"day",     label:"当日" },
+  { id:"return",  label:"返却" },
+];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// 式の時刻は日本時間そのもの。端末のタイムゾーンで読み替えない。
+const JST = { timeZone:"Asia/Tokyo" };
+const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString("ja-JP",{...JST,hour:"2-digit",minute:"2-digit"}) : "—";
+const md = (iso) => iso ? new Date(iso).toLocaleString("ja-JP",{...JST,month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
+const yen = (n) => (n ?? 0).toLocaleString("ja-JP") + "円";
+
+let toastTimer = null;
+function toast(msg, isError = false) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.className = "show" + (isError ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ""; }, 5000);
+}
+
+async function call(path, options = {}, quiet = false) {
+  const res = await fetch(API + path, { headers: {"content-type":"application/json"}, ...options });
+  if (!res.ok) {
+    const body = await res.text();
+    let detail = body;
+    try { detail = JSON.parse(body).detail ?? body; } catch { /* そのまま */ }
+    if (!quiet) toast(detail, true);
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+// ------------------------------------------------------------- いまの段階
+function autoStage() {
+  const ev = state.event;
+  if (!ev) return "intake";
+  if (ev.consents?.some(c => c.status === "pending")) return "confirm";
+  if (!ev.outfit) return "outfit";
+  if (ev.return_plan?.completed_at || ev.outfit.state === "returned") return "return";
+  const started = new Date(ev.schedule.ceremony_start_at) <= new Date();
+  if (started && ev.return_plan) return "return";
+  return "day";
+}
+const stage = () => state.look ?? state.autoStage;
+
+// ---------------------------------------------------------------- 見出し
+function renderHead() {
+  const ev = state.event;
+  if (!ev) {
+    $("event-head").innerHTML = '<div class="when">式の予定はまだありません</div>' +
+      '<div class="where">フォームに入れて登録してください</div>';
+    $("countdown").innerHTML = "";
+    return;
+  }
+  const start = new Date(ev.schedule.ceremony_start_at);
+  $("event-head").innerHTML = `
+    <div class="kind ${ev.type === "funeral" ? "chou" : ""}">${esc(EVENT_KIND[ev.type] ?? ev.type)}</div>
+    <div class="when">${start.toLocaleString("ja-JP",{...JST,month:"numeric",day:"numeric",weekday:"short"})} ${hhmm(ev.schedule.ceremony_start_at)} 開式</div>
+    <div class="where">${esc(ev.schedule.venue_name)}</div>`;
+
+  // 開式前は開式まで、式が済んだら返却期限までを数える。この製品の軸。
+  const now = new Date();
+  const due = ev.return_plan && !ev.return_plan.completed_at ? new Date(ev.return_plan.due_at) : null;
+  const target = now < start ? { at:start, label:"開式まで" } : due ? { at:due, label:"返却期限まで" } : null;
+  if (!target) { $("countdown").innerHTML = '<div class="lbl">おつかれさまでした</div>'; return; }
+  const mins = Math.round((target.at - now) / 60000);
+  const over = mins < 0, a = Math.abs(mins);
+  const text = a >= 1440 ? `${Math.floor(a/1440)}日${Math.floor(a%1440/60)}時間` : a >= 60 ? `${Math.floor(a/60)}時間${a%60}分` : `${a}分`;
+  $("countdown").className = "countdown" + (over ? " done" : "");
+  $("countdown").innerHTML = `<div class="lbl">${target.label}</div><div class="num">${over ? "超過 " : ""}${text}</div>`;
+}
+
+// ---------------------------------------------------------------- 道のり
+function renderSteps() {
+  const here = STEPS.findIndex(s => s.id === stage());
+  const reached = STEPS.findIndex(s => s.id === state.autoStage);
+  $("steps").innerHTML = STEPS.map((s, i) => {
+    const done = i <= reached && state.view === "flow";
+    return `<button data-step="${s.id}" class="${i === here && state.view === "flow" ? "on" : done ? "done" : ""}"
+      ${done ? "" : "disabled"}><span class="n">${state.look && i === reached ? "いま" : i + 1}</span>${s.label}</button>`;
+  }).join("");
+  $("steps").querySelectorAll("button[data-step]").forEach(b => b.addEventListener("click", () => {
+    state.view = "flow";
+    state.look = b.dataset.step === state.autoStage ? null : b.dataset.step;
+    render();
+  }));
+}
+
+// ------------------------------------------------------------------ 各段階
+// 「予定」だけはフォームで受ける。日時と駅は取り違えると当日が丸ごと崩れるので、
+// 会話で読み解かせず、選ばせて、送る前に本人に見せて確かめてもらう。
+function renderIntake(el) {
+  // 登録が済めばフォームの役目は終わり。以降は登録した内容を見せるだけにする。
+  if (state.event) return renderPlan(el);
+  if (state.intake.phase === "check") return renderIntakeCheck(el);
+  const d = state.intake.draft;
+  const opts = (list, cur) => list.map(v =>
+    `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(v)}</option>`).join("");
+  el.innerHTML = `
+    <h1>式の予定を教えてください</h1>
+    <p class="lead">日時と会場、それに出発する駅がわかれば、そこから先はこちらで組み立てます。
+      誰の式か、どなたが亡くなったかはうかがいません。</p>
+    <form class="form" id="intake-form">
+      <label><span>式の種別</span>
+        <select name="type">${Object.entries(EVENT_KIND).map(([k,v]) =>
+          `<option value="${k}" ${k === d.type ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
+      <label><span>開式の日時</span>
+        <input type="datetime-local" name="at" value="${esc(d.at)}" min="${esc(nowLocal())}" required /></label>
+      <label><span>会場の最寄り駅</span>
+        <select name="venue_station">${opts(state.stations, d.venue_station)}</select></label>
+      <label><span>会場の名前</span>
+        <input type="text" name="venue_name" value="${esc(d.venue_name)}" placeholder="空のままでも進められます" /></label>
+      <label><span>出発する駅</span>
+        <select name="home_station">${opts(state.stations, d.home_station)}</select></label>
+      <label><span>サイズ</span>
+        <select name="size">${opts(["S","M","L","LL"], d.size)}</select></label>
+      <div class="row" style="margin-top:6px">
+        <button class="btn primary big" type="submit">入力した内容を確かめる</button>
+      </div>
+    </form>`;
+  $("intake-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const draft = Object.fromEntries(f.entries());
+    if (new Date(draft.at + "+09:00") <= new Date()) { toast("開式の日時は、これから先の時刻にしてください。", true); return; }
+    state.intake = { phase:"check", draft };
+    render();
+  });
+}
+
+function renderPlan(el) {
+  const ev = state.event;
+  const s = ev.schedule;
+  const start = new Date(s.ceremony_start_at);
+  el.innerHTML = `
+    <h1>登録した予定</h1>
+    <p class="lead">ここを起点に、当日の動きも返却期限も決まっています。</p>
+    <dl class="facts">
+      <dt>式の種別</dt><dd>${esc(EVENT_KIND[ev.type] ?? ev.type)}</dd>
+      <dt>開式</dt><dd>${start.toLocaleString("ja-JP",{...JST,month:"long",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"})}</dd>
+      <dt>会場</dt><dd>${esc(s.venue_name)}（${esc(s.venue_station)}駅）</dd>
+      ${s.pickup ? `<dt>受取</dt><dd>${esc(s.pickup.name)}</dd>` : ""}
+      ${s.return_due_at ? `<dt>返却期限</dt><dd>${md(s.return_due_at)}</dd>` : ""}
+    </dl>
+    <p class="muted" style="font-size:12.5px;margin:20px 0 0">
+      変えたいことがあれば「AIに相談」からお知らせください。日時や会場が動けば、当日の流れも引き直します。</p>`;
+}
+
+function renderIntakeCheck(el) {
+  const d = state.intake.draft;
+  const at = new Date(d.at + "+09:00");
+  el.innerHTML = `
+    <h1>この予定で進めますか</h1>
+    <p class="lead">ここを間違えると当日の逆算がまるごとずれます。送る前に確かめてください。</p>
+    <dl class="facts">
+      <dt>式の種別</dt><dd>${esc(EVENT_KIND[d.type])}</dd>
+      <dt>開式</dt><dd>${at.toLocaleString("ja-JP",{...JST,month:"long",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"})}</dd>
+      <dt>会場</dt><dd>${esc(d.venue_name || d.venue_station + "の会場")}（${esc(d.venue_station)}駅）</dd>
+      <dt>出発する駅</dt><dd>${esc(d.home_station)}</dd>
+      <dt>サイズ</dt><dd>${esc(d.size)}</dd>
+    </dl>
+    <div class="row" style="margin-top:24px">
+      <button class="btn primary big" id="intake-go">この予定で始める</button>
+      <button class="btn" id="intake-back">直す</button>
+    </div>
+    <p class="gate-note">この時点では予約も支払いも発生しません。衣装の候補が出るところまで進みます。</p>`;
+  $("intake-back").addEventListener("click", () => { state.intake.phase = "form"; render(); });
+  $("intake-go").addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    try {
+      const event = await call("/events/start", { method:"POST", body: JSON.stringify({
+        uid: UID, type: d.type, ceremony_start_at: d.at,  // 素の文字列。サーバーが日本時間として読む
+        venue_station: d.venue_station, venue_name: d.venue_name,
+        home_station: d.home_station, size: d.size,
+      })});
+      state.look = null;
+      state.intake = freshDraft();
+      await refresh(event);
+    } finally { e.target.disabled = false; }
+  });
+}
+
+// datetime-local は素の文字列なので、日本時間の「いま」から組み立てる。
+// 書式は locale の綴り方に頼らず、部品を取り出して自分で並べる。
+function tokyoParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    ...JST, year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", hour12:false,
+  }).formatToParts(date);
+  const p = {};
+  for (const { type, value } of parts) if (type !== "literal") p[type] = value;
+  if (p.hour === "24") p.hour = "00";  // 深夜 0 時を 24 時と綴る実装がある
+  return p;
+}
+const nowLocal = () => {
+  const p = tokyoParts();
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+};
+
+// 既定は「明日の15時」。いちばん多い当日〜翌日の依頼にすぐ乗る。
+function freshDraft() {
+  const p = tokyoParts();
+  const t = new Date(Date.UTC(+p.year, +p.month - 1, +p.day + 1));
+  return { phase:"form", draft: {
+    type:"wedding", at: t.toISOString().slice(0, 10) + "T15:00",
+    venue_station:"品川", venue_name:"", home_station:"東京", size:"M",
+  }};
+}
+
+function renderOutfit(el) {
+  const ev = state.event, list = ev?.candidates ?? [];
+  if (!list.length) {
+    el.innerHTML = `<h1>衣装をえらぶ</h1><p class="lead">式の予定が決まると、ここに候補が出ます。</p>`;
+    return;
+  }
+  const outfit = ev.outfit;
+  const chosen = outfit?.candidate?.outfit_id;
+  const reserved = outfit?.state === "reserved";
+  // 受け取ったあとは手元に衣装があるので、もう変えられない。
+  const locked = ["picked_up", "returning", "returned", "overdue"].includes(outfit?.state);
+
+  // 「適合 30%」のような生の数字は意味が伝わらない。言葉にする。
+  const fitLabel = (s) => s >= 0.9 ? "肌映りが良い" : s >= 0.6 ? "式の定番" : "効かせ色";
+
+  const action = (c, i) => {
+    if (c.outfit_id === chosen) {
+      return reserved
+        ? `<div class="chosen">この衣装で予約しました<small>予約番号 ${esc(outfit.reservation_id ?? "—")}</small></div>`
+        : locked
+          ? `<div class="chosen">${esc(RENTAL_STATE[outfit.state] ?? "")}</div>`
+          : `<div class="chosen">承認をお待ちしています</div>`;
+    }
+    if (locked) return `<div class="muted" style="font-size:12px">受取済みのため変更できません</div>`;
+    if (state.swapping === c.outfit_id) {
+      return `<div class="swap">
+        <p>いまの予約（${esc(outfit.reservation_id ?? "")}）を取り消して、こちらに変更します。</p>
+        <div class="row">
+          <button class="btn small primary" data-swap="${esc(c.outfit_id)}">変更する</button>
+          <button class="btn small" data-swap-cancel>やめる</button>
+        </div></div>`;
+    }
+    return reserved
+      ? `<button class="btn small" data-ask-swap="${esc(c.outfit_id)}">これに変更する</button>`
+      : `<button class="btn small" data-outfit="${esc(c.outfit_id)}">これにする</button>`;
+  };
+
+  el.innerHTML = `
+    <h1>衣装をえらぶ</h1>
+    <p class="lead">${esc(EVENT_KIND[ev.type])}の装いとして外れがなく、肌映りに合うものから順に並べています。</p>
+    <div class="cards">` + list.map((c, i) => `
+      <div class="card ${c.outfit_id === chosen ? "on" : ""}">
+        <div class="swatch" style="background:${COLORS[c.color] ?? "#ddd"}">試着画像</div>
+        <div class="nm">${esc(c.name)}</div>
+        <div class="muted" style="font-size:12px">${esc(c.color)} / ${esc(c.size)} / ${esc(c.provider)}</div>
+        <div class="muted" style="font-size:12px">${fitLabel(c.match_score)}</div>
+        <div class="why">${esc(c.rationale ?? "")}</div>
+        <div class="row" style="justify-content:space-between;margin-top:auto">
+          <span class="fee">${yen(c.rental_fee_yen)}</span>
+          ${i === 0 ? '<span class="pill rec">おすすめ</span>' : ""}
+        </div>
+        ${action(c, i)}
+      </div>`).join("") + `</div>
+    <p class="muted" style="font-size:12.5px;margin:18px 0 0">${reserved
+      ? "変更すると、いまの予約はいったん取り消してから取り直します。"
+      : "えらぶと、受取場所と当日の動線まで込みで見積もります。この時点ではまだ予約は入りません。"}</p>`;
+
+  el.querySelectorAll("button[data-outfit]").forEach(b =>
+    b.addEventListener("click", () => chooseOutfit(b.dataset.outfit)));
+  el.querySelectorAll("button[data-ask-swap]").forEach(b =>
+    b.addEventListener("click", () => { state.swapping = b.dataset.askSwap; render(); }));
+  el.querySelectorAll("button[data-swap-cancel]").forEach(b =>
+    b.addEventListener("click", () => { state.swapping = null; render(); }));
+  el.querySelectorAll("button[data-swap]").forEach(b =>
+    b.addEventListener("click", () => chooseOutfit(b.dataset.swap, { replace: true })));
+}
+
+async function renderConfirm(el) {
+  const ev = state.event;
+  const c = ev?.consents?.find(x => x.status === "pending");
+  if (!c) {
+    el.innerHTML = `<h1>確認する</h1><p class="lead">いま確認をお願いすることはありません。</p>` + pastConsents(ev);
+    return;
+  }
+  const head = CONSENT_HEAD[c.action] ?? { title:"確認してください", lead:"" };
+  const p = ev.schedule.pickup;
+  el.innerHTML = `
+    <h1>${esc(head.title)}</h1>
+    <p class="lead">${esc(head.lead)}</p>
+    <div class="quote">${esc(c.summary)}</div>
+    ${p ? `<dl class="facts" style="margin-top:20px">
+      <dt>受取</dt><dd>${esc(p.name)}（${esc(PICKUP_KIND[p.kind])}）</dd>
+      ${ev.route ? `<dt>当日の出発</dt><dd>${hhmm(ev.route.steps?.[0]?.starts_at)} に自宅を出れば間に合います</dd>` : ""}
+    </dl>` : ""}
+    <div class="breakdown">
+      ${Object.entries(c.breakdown).map(([k,v]) => `<div><span>${esc(k)}</span><span>${yen(v)}</span></div>`).join("")}
+      <div class="total"><span>お支払い</span><span class="yen">${yen(c.amount_yen)}</span></div>
+    </div>
+    <div class="row" style="margin-top:24px">
+      <button class="btn primary big" id="approve">承認して確定する</button>
+      <button class="btn" id="reject">やめておく</button>
+    </div>
+    <div class="gate-note">承認するまで、エージェントは予約も生成も実行しません。金額の発生する操作はすべてここを通ります。</div>
+    ${c.action === "reserve" ? `<details class="compare"><summary>ほかの受取場所とくらべる</summary>
+      <div id="compare" style="margin-top:12px" class="muted">読み込んでいます…</div></details>` : ""}`;
+  $("approve").addEventListener("click", () => decide(c.consent_id, true));
+  $("reject").addEventListener("click", () => decide(c.consent_id, false));
+  el.querySelector("details.compare")?.addEventListener("toggle", (e) => {
+    if (e.target.open) loadCompare(ev.event_id);
+  }, { once:true });
+}
+
+function pastConsents(ev) {
+  const done = (ev?.consents ?? []).filter(c => c.status !== "pending");
+  if (!done.length) return "";
+  return `<hr class="sep" /><table>
+    <tr><th>いつ</th><th>内容</th><th>金額</th><th>判断</th></tr>
+    ${done.map(c => `<tr><td class="muted">${md(c.decided_at ?? c.requested_at)}</td>
+      <td>${esc(c.summary)}</td><td class="num">${yen(c.amount_yen)}</td>
+      <td>${c.status === "approved" ? '<span style="color:var(--ok)">承認</span>' : '<span class="muted">見送り</span>'}</td></tr>`).join("")}
+  </table>`;
+}
+
+async function loadCompare(eventId) {
+  const rows = await call(`/events/${eventId}/pickups`);
+  const now = state.event.schedule.pickup?.pickup_id;
+  $("compare").classList.remove("muted");
+  $("compare").innerHTML = `<table>
+    <tr><th>受取場所</th><th>移動</th><th>手数料</th><th>運賃</th><th>出発</th><th></th><th></th></tr>
+    ${rows.map(r => {
+      const current = r.option.pickup_id === now;
+      return `<tr>
+      <td>${esc(r.option.name)}${current ? ' <span class="pill gate">いまの案</span>' : ""}
+        <br><span class="muted" style="font-size:11px">${esc(PICKUP_KIND[r.option.kind])}</span></td>
+      <td class="num">${r.travel_minutes}分</td>
+      <td class="num">${yen(r.fee_yen)}</td>
+      <td class="num">${yen(r.fare_yen)}</td>
+      <td class="num">${hhmm(r.departure_at)}</td>
+      <td>${r.feasible ? '<span style="color:var(--ok)">間に合う</span>'
+        : `<span style="color:var(--kei)">間に合わない</span>`}</td>
+      <td>${current || !r.feasible ? ""
+        : `<button class="btn small" data-pickup="${esc(r.option.pickup_id)}">この受取にする</button>`}</td>
+    </tr>`; }).join("")}</table>
+    <p class="muted" style="font-size:12px;margin:10px 0 0">
+      受取場所を変えると、金額と当日の出発時刻を計算し直します。承認はそのあとです。</p>`;
+  $("compare").querySelectorAll("button[data-pickup]").forEach(b =>
+    b.addEventListener("click", () => chooseOutfit(
+      state.event.outfit.candidate.outfit_id, { pickupId: b.dataset.pickup })));
+}
+
+function renderDay(el) {
+  const ev = state.event, route = ev?.route;
+  if (!route?.steps?.length) {
+    el.innerHTML = `<h1>当日の流れ</h1><p class="lead">予約が確定すると、開式から逆算した一日の流れが出ます。</p>`;
+    return;
+  }
+  const now = Date.now();
+  const banner = route.feasible
+    ? `<div class="okline">${hhmm(route.steps[0].starts_at)} に出発すれば、開式に間に合います。</div>`
+    : `<div class="warnline">${esc(route.warning ?? "いまの計画では間に合いません。")}</div>`;
+
+  let inserted = false;
+  const rows = route.steps.map(s => {
+    const at = new Date(s.starts_at).getTime();
+    let nowline = "";
+    if (!inserted && at > now) { inserted = true; nowline = `<div class="nowline"><div class="lbl">いま</div><div class="bar"></div></div>`; }
+    const key = ["pickup","ceremony","return"].includes(s.kind);
+    return nowline + `
+      <div class="clock ${key ? "key" : ""} ${at <= now ? "past" : ""}">
+        <div class="t">${s.kind === "return" ? md(s.starts_at) : hhmm(s.starts_at)}</div>
+        <div class="rail"><div class="dot"></div></div>
+        <div class="what"><b>${esc(s.label)}</b><small>${esc(s.place)}${s.detail ? " ・ " + esc(s.detail) : ""}</small></div>
+      </div>`;
+  }).join("");
+
+  el.innerHTML = `<h1>当日の流れ</h1>
+    <p class="lead">${hhmm(ev.schedule.ceremony_start_at)}の開式から逆算しています。着替えと受取の時間も入っています。</p>`
+    + banner + rows;
+}
+
+function renderReturn(el) {
+  const ev = state.event, plan = ev?.return_plan;
+  if (!plan) {
+    el.innerHTML = `<h1>返却</h1><p class="lead">予約が確定すると、返却期限と返し方が決まります。</p>`;
+    return;
+  }
+  const alerts = ev.alerts ?? [];
+  // 期限を過ぎているかは見ればわかる話なので、通知を待たずに本文でも言う。
+  const overdue = !plan.completed_at && new Date(plan.due_at) < new Date();
+  const lead = plan.completed_at
+    ? "おつかれさまでした。預かった画像は期限どおりに消えます。"
+    : overdue
+      ? "返却期限を過ぎています。延滞料がかかることがあります。"
+      : "式のあとに店舗へ戻らなくて済む返し方を選んでいます。期限が近づいたらお知らせします。";
+  el.innerHTML = `
+    <h1>${plan.completed_at ? "返却が済みました" : overdue ? "返却期限を過ぎています" : "返却"}</h1>
+    <p class="lead">${lead}</p>
+    ${overdue ? `<div class="warnline">${md(plan.due_at)}が期限でした。${esc(RETURN_METHOD[plan.method])}で返してください。</div>` : ""}
+    <dl class="facts">
+      <dt>返却期限</dt><dd>${md(plan.due_at)}</dd>
+      <dt>返し方</dt><dd>${esc(RETURN_METHOD[plan.method])}</dd>
+      <dt>返す場所</dt><dd>${esc(plan.place ?? "—")}</dd>
+      <dt>いまの状態</dt><dd>${esc(RENTAL_STATE[ev.outfit?.state] ?? "—")}</dd>
+      ${plan.extension_proposed_minutes ? `<dt>延長の提案</dt><dd>${plan.extension_proposed_minutes}分 / ${yen(plan.extension_fee_yen)}</dd>` : ""}
+    </dl>
+    ${alerts.map(a => `<div class="${a.level === "critical" ? "warnline" : "okline"}" style="margin-top:16px">${esc(a.message)}</div>`).join("")}
+    ${plan.completed_at ? "" : `<div class="row" style="margin-top:22px">
+      <button class="btn primary" id="ret-done">返却しました</button>
+      <button class="btn" id="ret-check">いま間に合うか確認する</button>
+    </div>`}`;
+  $("ret-check")?.addEventListener("click", async () => {
+    const res = await call(`/events/${ev.event_id}/return/check`, { method:"POST" });
+    await refresh(res.event);
+    toast(res.alert ? res.alert.message : "期限まで余裕があります。近づいたらお知らせします。");
+  });
+  $("ret-done")?.addEventListener("click", async () =>
+    refresh(await call(`/events/${ev.event_id}/return/complete`, { method:"POST" })));
+}
+
+// ----------------------------------------------------- 寄り道（ムービー）
+function renderMovie(el) {
+  const ev = state.event;
+  const back = `<p style="margin:0 0 18px"><button class="link" data-back>← 進行中の手配に戻る</button></p>`;
+  if (!ev) { el.innerHTML = back + `<h1>思い出のムービー</h1><p class="lead">式の予定が決まると使えます。</p>`; return; }
+  const m = ev.movie;
+  if (!m) {
+    el.innerHTML = back + `
+      <h1>思い出のムービー</h1>
+      <p class="lead">古い写真を預けると、傷みを補正し、動かして、BGMまで付けた短い映像にします。</p>
+      <button class="btn" id="mv-add">写真を登録する（サンプル3枚）</button>`;
+    $("mv-add").addEventListener("click", addPhotos);
+    bindBack(el); return;
+  }
+  const pending = m.photos.filter(p => p.contains_third_party && !p.consent_confirmed);
+  el.innerHTML = back + `
+    <h1>思い出のムービー</h1>
+    <p class="lead">${esc(MOVIE_STATUS[m.status] ?? m.status)}${m.theme ? ` ・ テーマ「${esc(m.theme)}」` : ""}</p>
+    ${pending.length ? `<div class="warnline">ご本人以外が写っている写真が${pending.length}枚あります。使ってよいか確認してください。</div>` : ""}
+    <table>
+      <tr><th>写真</th><th>説明</th><th>ほかの方</th><th>使ってよいか</th><th>補正</th></tr>
+      ${m.photos.map(p => `<tr>
+        <td><code>${esc(p.image_ref)}</code></td>
+        <td>${esc(p.caption ?? "—")}</td>
+        <td>${p.contains_third_party ? "写っている" : "—"}</td>
+        <td>${p.contains_third_party
+          ? (p.consent_confirmed ? '<span style="color:var(--ok)">確認済み</span>'
+             : `<button class="btn small" data-consent="${esc(p.photo_id)}">使ってよい</button>`)
+          : '<span class="muted">確認不要</span>'}</td>
+        <td class="muted">${p.restored_url ? "済" : "—"}</td>
+      </tr>`).join("")}
+    </table>
+    ${m.scenes.length ? `<table style="margin-top:16px">
+      <tr><th>順</th><th>ナレーション</th><th>秒</th><th>映像</th></tr>
+      ${m.scenes.map(s => `<tr><td class="num">${s.order}</td><td>${esc(s.narration)}</td>
+        <td class="num">${s.duration_seconds}</td>
+        <td>${s.video_url ? `<code>${esc(s.video_url)}</code>` : '<span class="muted">未生成</span>'}</td></tr>`).join("")}
+    </table>` : ""}
+    ${m.status === "completed" ? `<dl class="facts" style="margin-top:16px">
+      <dt>BGM</dt><dd><code>${esc(m.bgm_url)}</code></dd>
+      <dt>表示</dt><dd>${esc(m.watermark)}</dd>
+      <dt>素材の削除予定</dt><dd>${md(m.delete_after)}</dd></dl>` : ""}
+    ${m.status !== "completed" ? `<div class="row" style="margin-top:20px">
+      <input id="mv-theme" value="${esc(m.theme ?? "生い立ち")}" style="padding:7px 11px;border:1px solid var(--line);border-radius:2px;font-family:inherit;width:160px" />
+      <button class="btn" id="mv-propose">この構成で見積もる</button></div>` : ""}`;
+  el.querySelectorAll("button[data-consent]").forEach(b =>
+    b.addEventListener("click", async () => refresh(await call(`/events/${ev.event_id}/movie/photo-consent`, {
+      method:"POST", body: JSON.stringify({ photo_ids:[b.dataset.consent], confirmed:true }) }))));
+  $("mv-propose")?.addEventListener("click", async () => {
+    const res = await call(`/events/${ev.event_id}/movie/proposal`, {
+      method:"POST", body: JSON.stringify({ theme: $("mv-theme").value || "生い立ち" }) });
+    await refresh(res.event);
+    toast("見積もりを出しました。「確認」で承認すると生成が始まります。");
+  });
+  bindBack(el);
+}
+
+// 過去の段階は見に戻れるが、そこから抜ける道が帯の中だけだと気づけない。
+function prependLookback(el) {
+  const now = STEPS.find(x => x.id === state.autoStage);
+  const bar = document.createElement("div");
+  bar.className = "lookback";
+  bar.innerHTML = `<span>過去の段階を見ています。</span>
+    <button class="btn small" data-now>いま（${esc(now?.label ?? "")}）に戻る</button>`;
+  el.prepend(bar);
+  bar.querySelector("button[data-now]").addEventListener("click", () => {
+    state.look = null; state.swapping = null; render();
+  });
+}
+
+function bindBack(el) {
+  el.querySelectorAll("button[data-back]").forEach(b =>
+    b.addEventListener("click", () => { state.view = "flow"; state.look = null; render(); }));
+}
+
+// 一本道の外にあるものへの入口。押して初めて開く。
+function renderAsideNav() {
+  // 衣装をえらんでいる最中に別商品の話を出さない。手配が片づいてから見せる。
+  const ready = ["day", "return"].includes(state.autoStage);
+  if (!ready || state.view === "movie") { $("aside-nav").innerHTML = ""; return; }
+  $("aside-nav").innerHTML = `<button class="link" data-go="movie">思い出のムービーをつくる</button>`;
+  $("aside-nav").querySelectorAll("button[data-go]").forEach(b =>
+    b.addEventListener("click", () => { state.view = b.dataset.go; state.look = null; render(); }));
+}
+
+// ------------------------------------------------------------------ 会話
+// 予定を登録するまでは相談も出さない。最初の画面はフォームだけにする。
+// 登録が済めば以降はずっと付いて回るので、右下から開くサイドバーに置く。
+const chatAvailable = () => !!state.event;
+
+function placeChat() {
+  const on = chatAvailable();
+  if (on && $("talk-panel").parentElement !== $("talk-mount")) {
+    $("talk-mount").appendChild($("talk-panel"));
+  }
+  $("talk-panel").hidden = !on;
+  if (!on) state.chatOpen = false;
+  $("talk-scrim").hidden = !on || !state.chatOpen;
+  $("talk-open").hidden = !on || state.chatOpen;
+  $("talk-open").innerHTML = "AIに相談" + (state.unread ? `<span class="badge">${state.unread}</span>` : "");
+}
+
+function openChat() {
+  state.chatOpen = true; state.unread = 0;
+  placeChat();
+  $("talk").scrollTop = $("talk").scrollHeight;
+  $("say-text").focus();
+}
+function closeChat() { state.chatOpen = false; placeChat(); }
+
+$("talk-open").addEventListener("click", openChat);
+$("talk-close").addEventListener("click", closeChat);
+$("talk-scrim").addEventListener("click", (e) => { if (e.target === $("talk-scrim")) closeChat(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.chatOpen) closeChat(); });
+
+async function renderTalk() {
+  const messages = await call(`/chat/${UID}`);
+  lastMessageAt = messages.at(-1)?.created_at ?? lastMessageAt ?? new Date().toISOString();
+  const el = $("talk");
+  el.innerHTML = messages.length
+    ? messages.map(m => `<div class="msg ${m.role} ${esc(m.kind)}">${esc(m.text)}<span class="meta">${hhmm(m.created_at)}</span></div>`).join("")
+    : `<div class="msg agent">シキめぐりです。式の予定を教えてください。<span class="meta">いつ・どこ・なんの式か</span></div>`;
+  el.scrollTop = el.scrollHeight;
+
+  const hints = {
+    intake:  ["明日16時、品川の結婚式にお呼ばれ", "訃報がありました。明日13時、上野の斎場です", "最寄りは吉祥寺です"],
+    outfit:  ["1番でお願いします", "2番"],
+    confirm: ["承認します", "却下"],
+    day:     ["いまの状況は？", "受取場所はどこ？"],
+    return:  ["返却はいつまで？", "まだ返せていません"],
+  }[stage()] ?? ["いまの状況は？"];
+  $("hints").innerHTML = hints.map(s => `<button data-say="${esc(s)}">${esc(s)}</button>`).join("");
+  $("hints").querySelectorAll("button").forEach(b => b.addEventListener("click", () => say(b.dataset.say)));
+}
+
+async function say(text) {
+  const input = $("say-text");
+  input.value = ""; input.disabled = true;
+  try {
+    const res = await call("/chat", { method:"POST", body: JSON.stringify({ uid: UID, text }) });
+    state.look = null;
+    if (res.event) await refresh(res.event); else { state.event = null; await render(); }
+  } finally { input.disabled = false; input.focus(); }
+}
+
+// エージェント起点の発言を拾う（アプリ内通知）
+async function pollChat(force = false) {
+  if ((document.hidden && !force) || !lastMessageAt) return;
+  try {
+    const fresh = await call(`/chat/${UID}?after=${encodeURIComponent(lastMessageAt)}`, {}, true);
+    if (!fresh.length) return;
+    // 畳んでいる間に届いた分は、開くボタンに件数で出す。
+    const arrived = fresh.filter(m => m.role === "agent").length;
+    if (arrived && !state.chatOpen) state.unread += arrived;
+    if (state.event) await refresh(await call(`/events/${state.event.event_id}`, {}, true));
+    else { await renderTalk(); placeChat(); }
+    const latest = [...fresh].reverse().find(m => m.role === "agent");
+    if (latest) toast(latest.text.split("\n")[0]);
+  } catch { /* 次の周期に任せる */ }
+}
+
+// ------------------------------------------------------------------ 操作
+async function chooseOutfit(outfitId, { pickupId = null, replace = false } = {}) {
+  const res = await call(`/events/${state.event.event_id}/reservation`, {
+    method:"POST",
+    body: JSON.stringify({ outfit_id: outfitId, pickup_id: pickupId, replace }),
+  });
+  state.look = null;
+  state.swapping = null;
+  await refresh(res.event);
+}
+
+async function decide(consentId, approved) {
+  state.look = null;
+  await refresh(await call(`/events/${state.event.event_id}/consents/${consentId}`, {
+    method:"POST", body: JSON.stringify({ approved }) }));
+}
+
+async function addPhotos() {
+  await refresh(await call(`/events/${state.event.event_id}/movie/photos`, {
+    method:"POST", body: JSON.stringify({ photos: [
+      { image_ref:"sample-photo-1", caption:"出会いのころ" },
+      { image_ref:"sample-photo-2", caption:"友人との旅行", contains_third_party:true },
+      { image_ref:"sample-photo-3", caption:"プロポーズ" },
+    ]}) }));
+}
+
+// ------------------------------------------------------------------ 描画
+async function render() {
+  state.autoStage = autoStage();
+  if (state.look && STEPS.findIndex(s => s.id === state.look) > STEPS.findIndex(s => s.id === state.autoStage)) {
+    state.look = null; // 先の段階は覗けない
+  }
+  renderHead(); renderSteps(); renderAsideNav();
+
+  const el = $("stage");
+  el.className = "stage";
+  $("main").className = "solo";
+  placeChat();
+
+  const jobs = [renderTalk()];
+  if (state.view === "movie") { renderMovie(el); await Promise.all(jobs); return; }
+
+  const s = stage();
+  if (s === "intake") renderIntake(el);
+  else if (s === "outfit") renderOutfit(el);
+  else if (s === "confirm") jobs.push(renderConfirm(el));
+  else if (s === "day") renderDay(el);
+  else if (s === "return") renderReturn(el);
+  if (state.look) prependLookback(el);
+  await Promise.all(jobs);
+}
+
+async function refresh(event) {
+  state.event = event;
+  await render();
+}
+
+function submitSay(e) {
+  e.preventDefault();
+  const t = $("say-text").value.trim();
+  if (t) say(t);
+}
+$("say-form").addEventListener("submit", submitSay);
+$("say-text").addEventListener("keydown", (e) => {
+  // 日本語入力の変換確定で送信しない
+  if (e.key === "Enter" && !e.isComposing) submitSay(e);
+});
+
+// ---------------------------------------------- 動作確認（?dev=1 のときだけ）
+function renderDevbar() {
+  if (!DEV) return;
+  const bar = $("devbar");
+  bar.hidden = false;
+  bar.innerHTML = `<div class="inner">
+    <span>動作確認</span>
+    <select id="dv-scenario">
+      <option value="wedding">結婚式お呼ばれ</option>
+      <option value="funeral">葬儀</option>
+      <option value="seijin">成人式・卒業式</option>
+      <option value="tourism">観光着物</option>
+    </select>
+    <button id="dv-seed">サンプルの式を作る</button>
+    <button id="dv-sweep">定期ジョブを走らせる</button>
+    <span id="dv-note"></span>
+  </div>`;
+  $("dv-seed").addEventListener("click", async () => {
+    const event = await call("/demo/seed", {
+      method:"POST", body: JSON.stringify({ scenario: $("dv-scenario").value, uid: UID }) });
+    state.look = null;
+    await refresh(event);
+  });
+  $("dv-sweep").addEventListener("click", async () => {
+    const r = await call("/tasks/sweep", { method:"POST" });
+    $("dv-note").textContent = r.alerted.length ? "返却期限の注意を出しました。" : "動かすものはありませんでした。";
+    await pollChat(true);
+  });
+}
+
+async function bootstrap() {
+  state.intake = freshDraft();
+  state.stations = await call("/stations");
+  const events = await call(`/events?uid=${UID}`);
+  const active = events.filter(e => !["completed","cancelled"].includes(e.status)).pop();
+  state.event = active ?? null;
+  renderDevbar();
+  await render();
+}
+
+bootstrap();
+setInterval(() => { renderHead(); pollChat(); }, 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pollChat(); });
+</script>
+</body>
+</html>

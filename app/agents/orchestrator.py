@@ -204,18 +204,6 @@ class Orchestrator:
                 )
             return event
 
-        if conversation.contains(text, conversation.RECALC_WORDS):
-            before = event.route.departure_at if event.route else None
-            event = await self.recalculate(event.event_id)
-            after = event.route.departure_at if event.route else None
-            if before == after:
-                await self._say(
-                    uid, "いまのところ遅延は出ていません。予定どおりで大丈夫です。",
-                    kind="delay",
-                    event_id=event.event_id,
-                )
-            return event
-
         await self._say(uid, _status_summary(event), event_id=event.event_id)
         return event
 
@@ -229,7 +217,15 @@ class Orchestrator:
     async def register_user(
         self, uid: str, home_station: str, size: str = "M", **extra
     ) -> UserProfile:
-        user = UserProfile(uid=uid, home_station=home_station, size=size, **extra)
+        # 既存の利用者なら上書きせず差分だけ当てる。パーソナルカラーの解析結果は
+        # 顔画像を破棄したあとの唯一の手掛かりなので、駅の変更で消してはいけない。
+        current = await self._d.repo.get_user(uid)
+        update = {"home_station": home_station, "size": size, **extra}
+        user = (
+            current.model_copy(update=update)
+            if current
+            else UserProfile(uid=uid, **update)
+        )
         await self._d.repo.save_user(user)
         await self._d.audit.record(
             agent=AGENT,
@@ -238,6 +234,49 @@ class Orchestrator:
             payload={"uid": uid, "collected": ["home_station", "size"]},
         )
         return user
+
+    async def start_from_form(
+        self,
+        *,
+        uid: str,
+        home_station: str,
+        size: str,
+        event_type: EventType,
+        ceremony_start_at: datetime,
+        venue_name: str,
+        venue_station: str,
+    ) -> Event:
+        """入力フォームからの受付。会話で始めたときと同じところまで一度に進める。
+
+        フォームは値が構造化されているので、文章に組み立て直して読み解かせない
+        （`conversation` の規則解釈を通さない）。会話の記録には残すので、
+        以降のやり取りはチャットからそのまま続けられる。
+        """
+
+        user = await self.register_user(uid, home_station, size)
+        await self._d.chat.hear(
+            uid,
+            f"{event_type.label}／{ceremony_start_at:%-m月%-d日 %H:%M}／{venue_name}"
+            f"（{venue_station}）／出発は{user.home_station}",
+        )
+        event = await self.create_event(
+            uid=uid,
+            event_type=event_type,
+            ceremony_start_at=ceremony_start_at,
+            ceremony_end_at=ceremony_start_at + timedelta(hours=3),
+            venue_name=venue_name,
+            venue_station=venue_station,
+            basis="本人がフォームで入力",
+        )
+        await self._say(
+            uid,
+            f"{event.type.label}として、{event.schedule.ceremony_start_at:%-m月%-d日 %H:%M}／"
+            f"{event.schedule.venue_name}で承りました。衣装の候補を出します。",
+            event_id=event.event_id,
+        )
+        event = await self.propose_outfits(event.event_id, image_ref=f"photo-{uid}")
+        await self._say(uid, _candidate_list(event), event_id=event.event_id)
+        return event
 
     async def create_event(
         self,
@@ -293,10 +332,16 @@ class Orchestrator:
         return await self.tryon.propose(event, user, image_ref=image_ref, limit=limit)
 
     async def propose_reservation(
-        self, event_id: str, outfit_id: str
+        self,
+        event_id: str,
+        outfit_id: str,
+        pickup_id: str | None = None,
+        replace: bool = False,
     ) -> tuple[Event, ConsentRequest]:
         event, user = await self._load(event_id)
-        return await self.arrange.propose(event, user, outfit_id)
+        return await self.arrange.propose(
+            event, user, outfit_id, pickup_id=pickup_id, replace=replace
+        )
 
     async def decide_consent(
         self, event_id: str, consent_id: str, approved: bool, note: str | None = None
@@ -320,10 +365,6 @@ class Orchestrator:
     async def plan_route(self, event_id: str) -> Event:
         event, user = await self._load(event_id)
         return await self.route.plan(event, user)
-
-    async def recalculate(self, event_id: str) -> Event:
-        event, user = await self._load(event_id)
-        return await self.route.recalculate(event, user)
 
     async def check_return(self, event_id: str) -> tuple[Event, ReturnAlert | None]:
         event, user = await self._load(event_id)
@@ -354,11 +395,10 @@ class Orchestrator:
     async def sweep(self) -> dict:
         """Cloud Scheduler から叩く定期ジョブ（設計書 §4 返却監視）。
 
-        1) 進行中イベントの遅延再計算 2) 返却期限の監視 3) TTL 超過の削除。
+        1) 返却期限の監視 2) TTL 超過の削除。
         """
 
         now = self._d.clock.now()
-        recalculated: list[str] = []
         alerted: list[str] = []
 
         for event in await self._d.repo.list_events():
@@ -367,12 +407,6 @@ class Orchestrator:
             user = await self._d.repo.get_user(event.uid)
             if user is None:
                 continue
-
-            if event.route is not None and now <= event.schedule.ceremony_start_at:
-                before = event.route.departure_at
-                event = await self.route.recalculate(event, user)
-                if event.route and event.route.departure_at != before:
-                    recalculated.append(event.event_id)
 
             if event.return_plan is not None:
                 _, alert = await self.monitor.check(event, user)
@@ -389,7 +423,6 @@ class Orchestrator:
             )
         return {
             "swept_at": now.isoformat(),
-            "recalculated": recalculated,
             "alerted": alerted,
             "purged": purged,
         }
@@ -499,5 +532,5 @@ def _status_summary(event: Event) -> str:
         parts.append(f"出発は{event.route.departure_at:%H:%M}の予定です。")
     if event.return_plan:
         parts.append(f"返却期限は{event.return_plan.due_at:%-m月%-d日 %H:%M}です。")
-    parts.append("「返却」「遅延」などとお送りいただければ確認します。")
+    parts.append("「返却」などとお送りいただければ確認します。")
     return " ".join(parts)

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="シキめぐり">
+  <title>シキめぐり</title>
+  <!--
+    慶（朱）と弔（藍）の二本の筆が向かい合って一つの環をつくる。環は「めぐり」、
+    上の金の点は逆算タイムラインの「いま」。頁の下の帯と同じ二色を使う。
+  -->
+  <rect width="32" height="32" rx="7" fill="#f6f3ec"/>
+  <g fill="none" stroke-width="4.6" stroke-linecap="butt">
+    <path d="M16.99 6.55A9.5 9.5 0 0 1 16.99 25.45" stroke="#b3402e"/>
+    <path d="M15.01 25.45A9.5 9.5 0 0 1 15.01 6.55" stroke="#4a4658"/>
+  </g>
+  <circle cx="16" cy="6.5" r="2.7" fill="#c69a4b"/>
+</svg>

@@ -84,6 +84,10 @@ class RentalClient(abc.ABC):
     async def reserve(self, outfit_id: str, pickup_id: str) -> str: ...
 
     @abc.abstractmethod
+    async def cancel(self, reservation_id: str) -> None:
+        """確定済みの予約を取り消す。衣装を変えるときに必ず通す。"""
+
+    @abc.abstractmethod
     async def extension_fee(self, outfit_id: str, minutes: int) -> int: ...
 
 
@@ -163,8 +167,15 @@ class MockRentalClient(RentalClient):
             options = [o for o in options if o.kind == "store"]
         return options
 
+    def __init__(self) -> None:
+        # 取り消した予約番号。二重取消や取消漏れを検出できるように残す。
+        self.cancelled: list[str] = []
+
     async def reserve(self, outfit_id: str, pickup_id: str) -> str:
         return f"MOCK-{outfit_id}-{pickup_id}-{uuid.uuid4().hex[:6].upper()}"
+
+    async def cancel(self, reservation_id: str) -> None:
+        self.cancelled.append(reservation_id)
 
     async def extension_fee(self, outfit_id: str, minutes: int) -> int:
         # 30 分単位・550 円刻みの想定。

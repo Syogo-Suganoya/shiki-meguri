@@ -2,648 +2,198 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>シキめぐり</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>シキめぐり — 冠婚葬祭レンタル×移動エージェント</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="./favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <link rel="manifest" href="./manifest.json" />
-<meta name="theme-color" content="#1b1a22" />
+<meta name="theme-color" content="#f6f3ec" />
+<meta name="description" content="式の衣装を試着で選び、受取場所・当日の動線・返却までエージェントが仕切る。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #14131a; --panel: #1e1d26; --panel-2: #262530; --line: #34323f;
-    --text: #eceaf2; --muted: #9c98ad; --accent: #c9a227; --accent-soft: #3a3320;
-    --ok: #5fbf8f; --warn: #e0a458; --ng: #d96c6c;
-    --radius: 10px;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.7;
-    font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
-  }
-  header {
-    padding: 20px 24px; border-bottom: 1px solid var(--line);
-    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
-  }
-  h1 { font-size: 20px; margin: 0; letter-spacing: .08em; }
-  h1 small { display: block; font-size: 11px; color: var(--muted); letter-spacing: .04em; font-weight: 400; }
-  main { max-width: 1080px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
-  section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-  section > h2 {
-    margin: 0; padding: 12px 16px; font-size: 13px; letter-spacing: .06em;
-    background: var(--panel-2); border-bottom: 1px solid var(--line); font-weight: 600;
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  }
-  section > h2 span.tag { font-size: 10px; color: var(--muted); font-weight: 400; letter-spacing: .04em; }
-  .body { padding: 16px; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  button {
-    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
-  }
-  button:hover:not(:disabled) { border-color: var(--accent); }
-  button:disabled { opacity: .4; cursor: not-allowed; }
-  button.primary { background: var(--accent-soft); border-color: var(--accent); color: #f2e6bd; }
-  button.danger { border-color: var(--ng); color: #f0c3c3; }
-  select { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font-family: inherit; }
-  .muted { color: var(--muted); }
-  .empty { color: var(--muted); font-size: 13px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--panel-2); display: flex; flex-direction: column; gap: 8px; }
-  .card.selected { border-color: var(--accent); }
-  .swatch { height: 74px; border-radius: 6px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 6px; font-size: 9px; color: rgba(0,0,0,.55); }
-  .name { font-weight: 600; }
-  .fee { color: var(--accent); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: .04em; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .timeline { display: grid; gap: 0; }
-  .step { display: grid; grid-template-columns: 80px 18px 1fr; gap: 10px; }
-  .step .time { font-variant-numeric: tabular-nums; color: var(--muted); padding-top: 2px; white-space: nowrap; }
-  .step .rail { position: relative; }
-  .step .rail::before { content: ""; position: absolute; left: 7px; top: 0; bottom: 0; width: 1px; background: var(--line); }
-  .step:first-child .rail::before { top: 9px; }
-  .step:last-child .rail::before { bottom: calc(100% - 9px); }
-  .step .dot { position: absolute; left: 3px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
-  .step.key .dot { background: var(--accent); }
-  .step .content { padding-bottom: 14px; }
-  .step .detail { color: var(--muted); font-size: 12px; }
-  .banner { padding: 10px 12px; border-radius: 6px; border: 1px solid; margin-bottom: 12px; font-size: 13px; }
-  .banner.ok { border-color: var(--ok); background: #1b2a23; }
-  .banner.warn { border-color: var(--warn); background: #2c2418; }
-  .banner.ng { border-color: var(--ng); background: #2c1c1c; }
-  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
-  .kv dt { color: var(--muted); }
-  .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-  .total { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; font-weight: 600; }
-  code { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
-  .log-basis { font-size: 12px; }
-  .pill { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-  .pill.hitl { border-color: var(--accent); color: var(--accent); }
-  .pill.auto { border-color: var(--ok); color: var(--ok); }
-  #toast {
-    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
-    max-width: min(520px, 90vw); padding: 10px 16px; border-radius: 8px;
-    background: var(--panel-2); border: 1px solid var(--accent); font-size: 13px;
-    opacity: 0; pointer-events: none; transition: opacity .2s;
-  }
-  #toast.show { opacity: 1; }
-  #toast.error { border-color: var(--ng); }
-  .chat-log {
-    display: flex; flex-direction: column; gap: 8px;
-    max-height: 340px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px;
-  }
-  .msg { max-width: 78%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; }
-  .msg.agent { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
-  .msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent); color: #f2e6bd; border-bottom-right-radius: 3px; }
-  .msg .meta { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
-  .msg.agent.consent { border-color: var(--accent); }
-  .msg.agent.delay { border-color: var(--warn); }
-  .msg.agent.return { border-color: var(--ok); }
-  .msg.agent.error { border-color: var(--ng); }
-  .chat-input { display: flex; gap: 8px; }
-  .chat-input input {
-    flex: 1; background: var(--panel-2); color: var(--text); font-family: inherit;
-    border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; font-size: 13px;
-  }
-  .chat-input input:focus { outline: none; border-color: var(--accent); }
-  .suggestions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .suggestions button { font-size: 12px; padding: 4px 10px; color: var(--muted); }
+:root{
+  --kinari:#f6f3ec;   /* 生成り（地） */
+  --sumi:#2a2723;     /* 墨（文字） */
+  --kei:#b3402e;      /* 慶 */
+  --kin:#c69a4b;      /* 金 */
+  --chou:#4a4658;     /* 弔 */
+  --sub:#7d7466;
+  --line:#e4dccb;
+  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--kinari);color:var(--sumi);font-family:"Noto Sans JP",sans-serif;line-height:2;
+  /* 中身が短くても、下の帯は窓の底に置く。 */
+  min-height:100vh;display:flex;flex-direction:column;
+}
+footer{margin-top:auto}
+.min{font-family:var(--mincho)}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px}
+
+/* 慶と弔を並べた帯。この頁の目印。 */
+.dualband{height:18px;display:grid;grid-template-columns:1fr 1fr}
+.dualband .k{background:repeating-linear-gradient(90deg,var(--kei) 0 40px,#fff 40px 80px)}
+.dualband .c{background:repeating-linear-gradient(90deg,var(--chou) 0 40px,#e8e6ee 40px 80px)}
+
+.hero{padding:64px 0 48px;text-align:center}
+.kicker{font-size:.74rem;letter-spacing:.3em;color:var(--kei)}
+h1{font-family:var(--mincho);font-size:3.1rem;font-weight:900;letter-spacing:.14em;margin:.15em 0}
+h1 .kei{color:var(--kei)}
+.tagline{color:var(--sub);max-width:620px;margin:8px auto 0;font-size:.95rem}
+
+.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+.cta{
+  display:inline-block;padding:10px 28px;border-radius:2px;text-decoration:none;
+  font-size:.9rem;letter-spacing:.1em;border:1px solid var(--kei);
+  background:var(--kei);color:#fff;transition:opacity .18s;
+}
+.cta:hover{opacity:.86}
+
+section{padding:52px 0;border-top:1px solid var(--line)}
+h2{font-family:var(--mincho);font-size:1.5rem;font-weight:700;letter-spacing:.16em;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+h2::before{content:"";width:14px;height:14px;background:var(--kei);transform:rotate(45deg);flex-shrink:0}
+section:nth-of-type(even) h2::before{background:var(--chou)}
+.lede{color:var(--sub);font-size:.9rem;margin-bottom:26px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:18px}
+.card{background:#fff;border:1px solid var(--line);padding:24px;position:relative}
+.card h3{font-family:var(--mincho);font-size:1.02rem;color:var(--kei);margin-bottom:8px}
+.card p{color:var(--sub);font-size:.88rem}
+
+
+/* 困り事 */
+.trouble{background:#fff;border:1px solid var(--line);border-left:5px solid var(--kei);padding:22px 24px}
+.trouble.chou{border-left-color:var(--chou)}
+.trouble h3{font-family:var(--mincho);font-size:1.06rem;line-height:1.7;margin-bottom:8px}
+.trouble p{color:var(--sub);font-size:.88rem}
+
+/* 使い方（画面の写し） */
+.steps{counter-reset:step;display:grid;gap:44px}
+.step{display:grid;grid-template-columns:56px 1fr;gap:18px}
+.step::before{
+  counter-increment:step;content:counter(step);
+  font-family:var(--mincho);font-size:1.6rem;font-weight:700;color:var(--kei);
+  text-align:right;line-height:1.5;
+}
+.step h3{font-family:var(--mincho);font-size:1.02rem;margin-bottom:4px}
+.step p{color:var(--sub);font-size:.88rem}
+.shot{margin-top:14px;border:1px solid var(--line);background:#fff;box-shadow:0 8px 24px rgba(42,39,35,.07)}
+.shot img{display:block;width:100%;height:auto}
+
+footer{padding:40px 0;text-align:center;border-top:1px solid var(--line);color:var(--sub);font-size:.82rem}
+
+@media(max-width:640px){
+  h1{font-size:2.2rem}
+  .step{grid-template-columns:34px 1fr;gap:12px}
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>シキめぐり<small>冠婚葬祭レンタル × 移動エージェント</small></h1>
-  <div class="row" style="margin-left:auto">
-    <select id="scenario">
-      <option value="wedding">結婚式お呼ばれ</option>
-      <option value="funeral">葬儀</option>
-      <option value="seijin">成人式・卒業式</option>
-      <option value="tourism">観光着物</option>
-    </select>
-    <button class="primary" id="seed">シナリオ開始</button>
-    <span class="muted" id="event-id"></span>
+
+<div class="dualband"><div class="k"></div><div class="c"></div></div>
+
+<header class="hero"><div class="wrap">
+  <p class="kicker">冠婚葬祭レンタル×移動エージェント</p>
+  <h1><span class="kei">シキ</span>めぐり</h1>
+  <p class="tagline">
+    式の衣装を試着で選び、受取場所・当日の動線・返却までエージェントが仕切ります。
+    衣装レンタルの「借りるまで」で終わっていた体験を、「式が終わって返すまで」に広げました。
+    お金が動く操作だけは、必ずあなたの承認を通します。
+  </p>
+
+  <div class="cta-row">
+    <a class="cta" href="./console.html">アプリを開く</a>
   </div>
-</header>
+</div></header>
 
-<main>
-  <section>
-    <h2>0. チャット<span class="tag">Orchestrator が受け付け、シーン（慶/弔）を判定して委譲する</span></h2>
-    <div class="body">
-      <div class="chat-log" id="chat-log"></div>
-      <div class="suggestions" id="suggestions"></div>
-      <form class="chat-input" id="chat-form">
-        <input id="chat-text" placeholder="例：明日16時、品川の結婚式にお呼ばれ" autocomplete="off" />
-        <button class="primary" type="submit">送信</button>
-      </form>
-    </div>
-  </section>
+<section id="trouble"><div class="wrap">
+  <h2>こんな困り事を解決します</h2>
+  <p class="lede">
+    式に出るのは、衣装を借りることだけでは終わりません。
+    当日までに決めることと、当日に動くことが山ほど残ります。そこを引き受けます。
+  </p>
+  <div class="grid">
+    <div class="trouble">
+      <h3>「何を着ればいいのか分からない」</h3>
+      <p>式の種別からドレスコードを外さない候補に絞り、肌映りの解析で似合う色から並べます。試着した姿も見られます。</p></div>
+    <div class="trouble">
+      <h3>「受け取りに行く時間がない」</h3>
+      <p>自宅配送・店舗・駅のロッカーを、当日の移動時間と手数料と運賃を足し合わせて比べます。安いだけの案は選びません。</p></div>
+    <div class="trouble">
+      <h3>「何時に家を出ればいいのか」</h3>
+      <p>開式から時間をさかのぼって出発時刻を出します。受取の手続きも着替えも、時間として計算に入っています。</p></div>
+    <div class="trouble">
+      <h3>「受取から会場まで間に合うのか不安」</h3>
+      <p>受取の手続き、着替え、乗換、受付前の余裕まで積んだうえで、間に合うかどうかをはっきり出します。間に合わない案は最初から選びません。</p></div>
+    <div class="trouble">
+      <h3>「返すのを忘れそう」</h3>
+      <p>返却期限を見張って、近づいたら声をかけます。式のあとに店へ戻らなくて済む返し方を選んであります。</p></div>
+    <div class="trouble chou">
+      <h3>「訃報は急に来る」</h3>
+      <p>翌日の式でも当日中に手配できる受取先だけを出します。誰の式か、どなたが亡くなったかはうかがいません。</p></div>
+  </div>
+</div></section>
 
-  <section>
-    <h2>1. 試着エージェント<span class="tag">パーソナルカラー × ドレスコードで絞り込み／提案まで</span></h2>
-    <div class="body"><div id="candidates" class="empty">「シナリオ開始」を押してください。</div></div>
-  </section>
+<section id="how"><div class="wrap">
+  <h2>使い方</h2>
+  <p class="lede">予定を入れてから返すまで、実際の画面です。いま何をすればいいかを、一画面にひとつだけ出します。</p>
 
-  <section>
-    <h2>2. 手配エージェント<span class="tag">受取場所を当日の動線コミで比較</span></h2>
-    <div class="body"><div id="pickups" class="empty">衣装を選ぶと比較が表示されます。</div></div>
-  </section>
+  <div class="steps">
+    <div class="step"><div>
+      <h3>式の予定を入れる</h3>
+      <p>種別・日時・会場の最寄り駅・出発する駅を選びます。誰の式かは訊かれません。</p>
+      <div class="shot"><img src="./shots/01-plan.png" width="1120" height="1010" loading="lazy"
+        alt="式の予定を入力するフォーム。式の種別、開式の日時、会場の最寄り駅、出発する駅を選ぶ" /></div>
+    </div></div>
 
-  <section>
-    <h2>3. 同意ゲート<span class="tag">金銭確定はエージェント権限外（起案 → 本人承認 → 実行）</span></h2>
-    <div class="body"><div id="consent" class="empty">起案はまだありません。</div></div>
-  </section>
+    <div class="step"><div>
+      <h3>内容を確かめる</h3>
+      <p>ここを間違えると当日の逆算がまるごとずれます。登録する前に一度見せます。</p>
+      <div class="shot"><img src="./shots/02-check.png" width="1120" height="640" loading="lazy"
+        alt="入力した予定の確認画面。種別・開式・会場・出発する駅が並び、この予定で始めるボタンがある" /></div>
+    </div></div>
 
-  <section>
-    <h2>4. 動線エージェント<span class="tag">開式から逆算／遅延の再計算と通知は自律実行</span></h2>
-    <div class="body">
-      <div class="row" style="margin-bottom:12px">
-        <button id="disrupt" disabled>運行障害を発生させる（+15分）</button>
-        <button id="recalc" disabled>再計算する</button>
-        <button id="sweep">定期ジョブを実行（Cloud Scheduler 相当）</button>
-      </div>
-      <div id="route" class="empty">承認後に当日タイムラインが引かれます。</div>
-    </div>
-  </section>
+    <div class="step"><div>
+      <h3>衣装をえらぶ</h3>
+      <p>候補が出ます。えらんでも、この時点ではまだ予約は入りません。</p>
+      <div class="shot"><img src="./shots/03-outfit.png" width="1120" height="730" loading="lazy"
+        alt="衣装の候補が3件並ぶ画面。名前・色・サイズ・料金・適合度が出ている" /></div>
+    </div></div>
 
-  <section>
-    <h2>5. 返却監視エージェント<span class="tag">期限との突合／延長は同意ゲート経由</span></h2>
-    <div class="body">
-      <div class="row" style="margin-bottom:12px">
-        <button id="check-return" disabled>返却状況を確認</button>
-        <button id="complete-return" disabled>返却を完了報告</button>
-      </div>
-      <div id="return" class="empty">予約確定後に返却期限が設定されます。</div>
-    </div>
-  </section>
+    <div class="step"><div>
+      <h3>金額を確かめて承認する</h3>
+      <p>受取場所と出発時刻、内訳と合計を見て承認します。ここで初めて予約が入ります。承認するまで、エージェントは1円も確定しません。</p>
+      <div class="shot"><img src="./shots/04-confirm.png" width="1120" height="740" loading="lazy"
+        alt="確認画面。受取場所と当日の出発時刻、レンタル料と受取手数料の内訳、合計金額、承認して確定するボタン" /></div>
+    </div></div>
 
-  <section>
-    <h2>6. 式ムービー工房<span class="tag">GMI Cloud：補正 → 動画化 → BGM／生成は同意ゲートの後</span></h2>
-    <div class="body">
-      <div class="row" style="margin-bottom:12px">
-        <button id="movie-photos" disabled>写真を登録（デモ3枚）</button>
-        <input id="movie-theme" value="生い立ち" style="width:160px" />
-        <button id="movie-propose" disabled>構成を起案</button>
-      </div>
-      <div id="movie" class="empty">式を登録すると使えます。</div>
-    </div>
-  </section>
+    <div class="step"><div>
+      <h3>当日の流れが決まる</h3>
+      <p>開式から逆算した一日が出ます。「いま」の位置が入るので、どこまで進んだかが分かります。</p>
+      <div class="shot"><img src="./shots/05-day.png" width="1120" height="1010" loading="lazy"
+        alt="当日の流れ。出発から受取・着替え・移動・開式・返却期限までが時刻つきで並ぶ" /></div>
+    </div></div>
 
-  <section>
-    <h2>7. 監査ログ<span class="tag">判断根拠・同意記録・画像破棄証跡（追記専用）</span></h2>
-    <div class="body"><div id="audit" class="empty">—</div></div>
-  </section>
-</main>
+    <div class="step"><div>
+      <h3>あとは「AIに相談」から</h3>
+      <p>右下のボタンでいつでも開けます。返却期限の注意もここに届きます。</p>
+      <div class="shot"><img src="./shots/06-chat.png" width="1120" height="840" loading="lazy"
+        alt="右側に開いた「AIに相談」のサイドバー。受付から予約確定までのやりとりが並んでいる" /></div>
+    </div></div>
+  </div>
+</div></section>
 
-<div id="toast"></div>
+<footer><div class="wrap">
+  <div class="cta-row" style="margin:0 0 20px"><a class="cta" href="./console.html">アプリを開く</a></div>
+  シキめぐり — 冠婚葬祭レンタル×移動エージェント
+</div></footer>
 
-<script>
-const API = "/api";
-const UID = "demo-user";
-const state = { eventId: null, event: null, selected: null, consent: null };
-let lastMessageAt = null;
+<div class="dualband"><div class="k"></div><div class="c"></div></div>
 
-// 状態に応じてチャット欄の下に出す入力例。
-const SUGGESTIONS = {
-  none: ["最寄りは吉祥寺です", "明日16時、品川の結婚式にお呼ばれ", "訃報がありました。明日13時、上野の斎場です"],
-  outfit_proposed: ["1番でお願いします", "2番"],
-  awaiting_consent: ["承認します", "却下"],
-  active: ["電車が遅れてるみたい", "返却はいつまで？", "いまの状況は？"],
-};
-
-const $ = (id) => document.getElementById(id);
-const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—";
-const md = (iso) => iso ? new Date(iso).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
-const yen = (n) => (n ?? 0).toLocaleString("ja-JP") + "円";
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-const RENTAL_STATE = {
-  proposed: "起案中", awaiting_consent: "承認待ち", reserved: "予約確定",
-  picked_up: "受取済み", returning: "返却中", returned: "返却済み", overdue: "延滞中",
-};
-const PICKUP_KIND = { home_delivery: "自宅配送", store: "店舗", locker: "ロッカー" };
-const RETURN_METHOD = {
-  convenience_store: "コンビニ発送", store: "店舗返却",
-  locker: "ロッカー返却", pickup_service: "集荷依頼",
-};
-
-const COLORS = {
-  "コーラルピンク": "#f0a08c", "アイボリー": "#ece3d0", "ラベンダー": "#b4a5d6",
-  "スモーキーブルー": "#8aa6c0", "テラコッタ": "#c1714b", "オリーブ": "#8a8f5c",
-  "ロイヤルブルー": "#3f5fb0", "ワインレッド": "#8f3a4a", "ブラック": "#2a2a30",
-};
-
-let toastTimer = null;
-function toast(message, isError = false) {
-  const el = $("toast");
-  el.textContent = message;
-  el.className = "show" + (isError ? " error" : "");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ""; }, 5000);
-}
-
-async function call(path, options = {}, quiet = false) {
-  const res = await fetch(API + path, {
-    headers: { "content-type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    let detail = body;
-    try { detail = JSON.parse(body).detail ?? body; } catch { /* そのまま表示 */ }
-    if (!quiet) toast(detail, true);
-    throw new Error(detail);
-  }
-  return res.json();
-}
-
-// ---------------------------------------------------------------- 描画
-
-async function renderChat() {
-  const messages = await call(`/chat/${UID}`);
-  // ここまで画面に出した時刻。これ以降の発言だけをポーリングで取りに行く。
-  lastMessageAt = messages.at(-1)?.created_at ?? lastMessageAt ?? new Date().toISOString();
-  const el = $("chat-log");
-  el.innerHTML = messages.length
-    ? messages.map((m) => `
-        <div class="msg ${m.role} ${esc(m.kind)}">${esc(m.text)}<span class="meta">${hhmm(m.created_at)}</span></div>`).join("")
-    : `<div class="msg agent">シキめぐりです。式の予定を教えてください。<span class="meta">例：明日16時、品川の結婚式にお呼ばれ</span></div>`;
-  el.scrollTop = el.scrollHeight;
-
-  const key = !state.event ? "none"
-    : ["outfit_proposed", "awaiting_consent"].includes(state.event.status) ? state.event.status
-    : "active";
-  $("suggestions").innerHTML = SUGGESTIONS[key]
-    .map((s) => `<button data-say="${esc(s)}">${esc(s)}</button>`).join("");
-  $("suggestions").querySelectorAll("button[data-say]").forEach((b) =>
-    b.addEventListener("click", () => say(b.dataset.say)));
-}
-
-// エージェント起点の発言を拾う。LINE のプッシュの代わりに画面側から取りに行く方式。
-async function pollChat(force = false) {
-  if ((document.hidden && !force) || !lastMessageAt) return;
-  try {
-    const fresh = await call(
-      `/chat/${UID}?after=${encodeURIComponent(lastMessageAt)}`, {}, true
-    );
-    if (!fresh.length) return;
-    if (state.eventId) {
-      await refresh(await call(`/events/${state.eventId}`, {}, true));
-    } else {
-      await renderChat();
-    }
-    const latest = [...fresh].reverse().find((m) => m.role === "agent");
-    if (latest) toast(latest.text.split("\n")[0]);
-  } catch {
-    // ポーリングの失敗は黙って次の周期に任せる。
-  }
-}
-
-async function say(text) {
-  const input = $("chat-text");
-  input.value = "";
-  input.disabled = true;
-  try {
-    const res = await call("/chat", {
-      method: "POST",
-      body: JSON.stringify({ uid: UID, text }),
-    });
-    if (res.event) {
-      await refresh(res.event);
-    } else {
-      state.event = null;
-      await renderChat();
-    }
-  } finally {
-    input.disabled = false;
-    input.focus();
-  }
-}
-
-function renderCandidates() {
-  const el = $("candidates");
-  const list = state.event?.candidates ?? [];
-  if (!list.length) { el.className = "empty"; el.textContent = "候補がありません。"; return; }
-  el.className = "cards";
-  el.innerHTML = list.map((c) => `
-    <div class="card ${state.selected === c.outfit_id ? "selected" : ""}">
-      <div class="swatch" style="background:${COLORS[c.color] ?? "#555"}">試着画像（モック）</div>
-      <div class="name">${esc(c.name)}</div>
-      <div class="muted" style="font-size:12px">${esc(c.color)} / ${esc(c.size)} / ${esc(c.provider)}</div>
-      <div class="detail muted" style="font-size:12px">${esc(c.rationale ?? "")}</div>
-      <div class="row" style="justify-content:space-between;margin-top:auto">
-        <span class="fee">${yen(c.rental_fee_yen)}</span>
-        <span class="pill">適合 ${Math.round(c.match_score * 100)}%</span>
-      </div>
-      <button data-outfit="${esc(c.outfit_id)}">この衣装で手配を起案</button>
-    </div>`).join("");
-  el.querySelectorAll("button[data-outfit]").forEach((b) =>
-    b.addEventListener("click", () => proposeReservation(b.dataset.outfit)));
-}
-
-async function renderPickups() {
-  if (!state.eventId) return;
-  const rows = await call(`/events/${state.eventId}/pickups`);
-  const el = $("pickups");
-  el.className = "";
-  el.innerHTML = `<table>
-    <tr><th>受取場所</th><th>種別</th><th>移動</th><th>手数料</th><th>運賃</th><th>出発</th><th>判定</th></tr>
-    ${rows.map((r, i) => `<tr>
-      <td>${esc(r.option.name)} ${i === 0 ? '<span class="pill hitl">最良案</span>' : ""}</td>
-      <td class="muted">${esc(PICKUP_KIND[r.option.kind])}</td>
-      <td class="num">${r.travel_minutes}分</td>
-      <td class="num">${yen(r.fee_yen)}</td>
-      <td class="num">${yen(r.fare_yen)}</td>
-      <td class="num">${hhmm(r.departure_at)}</td>
-      <td>${r.feasible ? '<span style="color:var(--ok)">成立</span>' : `<span style="color:var(--ng)">不成立</span> <span class="muted">${esc(r.warning ?? "")}</span>`}</td>
-    </tr>`).join("")}
-  </table>`;
-}
-
-function renderConsent() {
-  const el = $("consent");
-  const pending = (state.event?.consents ?? []).find((c) => c.status === "pending");
-  const history = (state.event?.consents ?? []).filter((c) => c.status !== "pending");
-
-  let html = "";
-  if (pending) {
-    html += `<div class="banner warn">${esc(pending.summary)}</div>
-      <dl class="kv">
-        ${Object.entries(pending.breakdown).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${yen(v)}</dd>`).join("")}
-        <dt class="total">合計</dt><dd class="total">${yen(pending.amount_yen)}</dd>
-      </dl>
-      <div class="row" style="margin-top:12px">
-        <button class="primary" id="approve">承認して確定する</button>
-        <button class="danger" id="reject">却下する</button>
-        <span class="muted">承認するまで予約APIは呼ばれません。</span>
-      </div>`;
-  }
-  if (history.length) {
-    html += `<table style="margin-top:${pending ? 16 : 0}px">
-      <tr><th>起案</th><th>金額</th><th>結果</th><th>決定時刻</th></tr>
-      ${history.map((c) => `<tr>
-        <td>${esc(c.summary)}</td>
-        <td class="num">${yen(c.amount_yen)}</td>
-        <td style="color:${c.status === "approved" ? "var(--ok)" : "var(--ng)"}">${c.status === "approved" ? "承認" : "却下"}</td>
-        <td class="num">${md(c.decided_at)}</td>
-      </tr>`).join("")}
-    </table>`;
-  }
-  el.className = html ? "" : "empty";
-  el.innerHTML = html || "起案はまだありません。";
-  $("approve")?.addEventListener("click", () => decide(pending.consent_id, true));
-  $("reject")?.addEventListener("click", () => decide(pending.consent_id, false));
-}
-
-function renderRoute() {
-  const el = $("route");
-  const route = state.event?.route;
-  if (!route?.steps?.length) { el.className = "empty"; el.textContent = "承認後に当日タイムラインが引かれます。"; return; }
-  el.className = "";
-  const banner = route.feasible
-    ? `<div class="banner ok">${hhmm(route.steps[0].starts_at)} 出発で開式に間に合います。</div>`
-    : `<div class="banner ng">${esc(route.warning ?? "現在の計画では間に合いません。")}</div>`;
-  const steps = route.steps.map((s) => `
-    <div class="step ${["pickup", "ceremony", "return"].includes(s.kind) ? "key" : ""}">
-      <div class="time">${s.kind === "return" ? md(s.starts_at) : hhmm(s.starts_at)}</div>
-      <div class="rail"><div class="dot"></div></div>
-      <div class="content">
-        <div>${esc(s.label)}</div>
-        <div class="detail">${esc(s.place)}${s.detail ? " ・ " + esc(s.detail) : ""}</div>
-      </div>
-    </div>`).join("");
-  const history = route.history?.length
-    ? `<table style="margin-top:12px"><tr><th>再計算</th><th>理由</th><th>前倒し</th><th>新しい出発</th></tr>
-       ${route.history.map((h) => `<tr>
-         <td class="muted">${md(h.recalculated_at)}</td><td>${esc(h.reason)}</td>
-         <td class="num">${h.delay_minutes}分</td><td class="num">${hhmm(h.new_departure_at)}</td>
-       </tr>`).join("")}</table>`
-    : "";
-  el.innerHTML = banner + `<div class="timeline">${steps}</div>` + history;
-}
-
-function renderReturn() {
-  const el = $("return");
-  const plan = state.event?.return_plan;
-  if (!plan) { el.className = "empty"; el.textContent = "予約確定後に返却期限が設定されます。"; return; }
-  el.className = "";
-  const alerts = state.event.alerts ?? [];
-  const cls = { info: "ok", warn: "warn", critical: "ng" };
-  el.innerHTML = `
-    <dl class="kv">
-      <dt>返却期限</dt><dd>${md(plan.due_at)}</dd>
-      <dt>返却手段</dt><dd>${esc(RETURN_METHOD[plan.method])}</dd>
-      <dt>返却場所</dt><dd>${esc(plan.place ?? "—")}</dd>
-      <dt>状態</dt><dd>${esc(RENTAL_STATE[state.event.outfit?.state] ?? "—")}</dd>
-      ${plan.extension_proposed_minutes ? `<dt>延長</dt><dd>${plan.extension_proposed_minutes}分 / ${yen(plan.extension_fee_yen)}</dd>` : ""}
-    </dl>
-    ${alerts.map((a) => `<div class="banner ${cls[a.level]}" style="margin-top:12px">${esc(a.message)}</div>`).join("")}`;
-}
-
-async function renderAudit() {
-  if (!state.eventId) return;
-  const logs = await call(`/audit?event_id=${state.eventId}`);
-  const el = $("audit");
-  el.className = "";
-  el.innerHTML = `<table>
-    <tr><th>時刻</th><th>エージェント</th><th>アクション</th><th>判断根拠</th><th>同意</th><th>画像破棄</th></tr>
-    ${logs.map((l) => `<tr>
-      <td class="muted">${md(l.ts)}</td>
-      <td><code>${esc(l.agent)}</code></td>
-      <td>${esc(l.action)} ${l.payload?.autonomous_execution === true ? '<span class="pill auto">自律</span>' : ""}${l.payload?.autonomous_execution === false ? '<span class="pill hitl">要承認</span>' : ""}</td>
-      <td class="log-basis">${esc(l.basis)}</td>
-      <td><code>${esc(l.consent_ref ?? "—")}</code></td>
-      <td class="muted">${l.image_destroyed_at ? md(l.image_destroyed_at) : "—"}</td>
-    </tr>`).join("")}
-  </table>`;
-}
-
-const MOVIE_STATUS = {
-  draft: "素材あり", consent_required: "第三者の同意待ち",
-  awaiting_consent: "制作費の承認待ち", rendering: "生成中", completed: "完成",
-};
-
-function renderMovie() {
-  const el = $("movie");
-  const movie = state.event?.movie;
-  if (!movie) {
-    el.className = "empty";
-    el.textContent = state.eventId ? "「写真を登録」から始めます。" : "式を登録すると使えます。";
-    return;
-  }
-  el.className = "";
-  const pending = movie.photos.filter((p) => p.contains_third_party && !p.consent_confirmed);
-  const banner = pending.length
-    ? `<div class="banner warn">ご本人以外が写る写真が${pending.length}枚あります。掲載の可否を確認してください。</div>`
-    : "";
-  const photos = `<table>
-    <tr><th>素材</th><th>説明</th><th>第三者</th><th>利用同意</th><th>補正</th></tr>
-    ${movie.photos.map((p) => `<tr>
-      <td><code>${esc(p.image_ref)}</code></td>
-      <td>${esc(p.caption ?? "—")}</td>
-      <td>${p.contains_third_party ? "あり" : "—"}</td>
-      <td>${p.contains_third_party
-        ? (p.consent_confirmed
-            ? '<span style="color:var(--ok)">確認済み</span>'
-            : `<button data-consent="${esc(p.photo_id)}">掲載を許可</button>`)
-        : "不要"}</td>
-      <td class="muted">${p.restored_url ? "済" : "—"}</td>
-    </tr>`).join("")}
-  </table>`;
-  const scenes = movie.scenes.length
-    ? `<table style="margin-top:12px">
-        <tr><th>#</th><th>ナレーション</th><th>秒</th><th>映像</th><th>モデル</th></tr>
-        ${movie.scenes.map((sc) => `<tr>
-          <td class="num">${sc.order}</td>
-          <td>${esc(sc.narration)}</td>
-          <td class="num">${sc.duration_seconds}</td>
-          <td>${sc.video_url ? `<code>${esc(sc.video_url)}</code>` : '<span class="muted">未生成</span>'}</td>
-          <td class="muted">${esc(sc.model ?? "—")}</td>
-        </tr>`).join("")}
-      </table>`
-    : "";
-  const done = movie.status === "completed"
-    ? `<dl class="kv" style="margin-top:12px">
-        <dt>BGM</dt><dd><code>${esc(movie.bgm_url)}</code></dd>
-        <dt>BGMモデル</dt><dd>${esc(movie.bgm_model)}</dd>
-        <dt>表示</dt><dd>${esc(movie.watermark)}</dd>
-        <dt>素材の削除予定</dt><dd>${md(movie.delete_after)}</dd>
-      </dl>`
-    : "";
-  el.innerHTML = `<div class="row" style="margin-bottom:10px">
-      <span class="pill">${esc(MOVIE_STATUS[movie.status] ?? movie.status)}</span>
-      ${movie.theme ? `<span class="muted">テーマ: ${esc(movie.theme)}</span>` : ""}
-    </div>${banner}${photos}${scenes}${done}`;
-  el.querySelectorAll("button[data-consent]").forEach((b) =>
-    b.addEventListener("click", async () => {
-      await refresh(await call(`/events/${state.eventId}/movie/photo-consent`, {
-        method: "POST",
-        body: JSON.stringify({ photo_ids: [b.dataset.consent], confirmed: true }),
-      }));
-    }));
-}
-
-function syncButtons() {
-  const routed = Boolean(state.event?.route?.steps?.length);
-  $("disrupt").disabled = !routed;
-  $("recalc").disabled = !routed;
-  $("check-return").disabled = !state.event?.return_plan;
-  $("complete-return").disabled = !state.event?.return_plan || Boolean(state.event.return_plan.completed_at);
-  $("movie-photos").disabled = !state.eventId;
-  $("movie-propose").disabled = !state.event?.movie?.photos?.length
-    || state.event.movie.status === "completed";
-}
-
-async function refresh(event) {
-  state.event = event;
-  state.eventId = event.event_id;
-  $("event-id").innerHTML = `<code>event=${esc(event.event_id)} / ${esc(event.status)}</code>`;
-  renderCandidates();
-  renderConsent();
-  renderRoute();
-  renderReturn();
-  renderMovie();
-  syncButtons();
-  await Promise.all([renderAudit(), renderChat()]);
-}
-
-// ---------------------------------------------------------------- 操作
-
-async function seed() {
-  const event = await call("/demo/seed", {
-    method: "POST",
-    body: JSON.stringify({ scenario: $("scenario").value, uid: UID }),
-  });
-  state.selected = null;
-  await refresh(event);
-  $("pickups").className = "empty";
-  $("pickups").textContent = "衣装を選ぶと比較が表示されます。";
-}
-
-async function proposeReservation(outfitId) {
-  state.selected = outfitId;
-  await renderPickups();
-  const res = await call(`/events/${state.eventId}/reservation`, {
-    method: "POST",
-    body: JSON.stringify({ outfit_id: outfitId }),
-  });
-  await refresh(res.event);
-}
-
-async function decide(consentId, approved) {
-  const event = await call(`/events/${state.eventId}/consents/${consentId}`, {
-    method: "POST",
-    body: JSON.stringify({ approved }),
-  });
-  await refresh(event);
-}
-
-async function disrupt() {
-  const line = state.event?.route?.legs?.[0]?.lines?.[0];
-  if (!line) return;
-  await call("/demo/disrupt", { method: "POST", body: JSON.stringify({ line, delay_minutes: 15 }) });
-  $("disrupt").textContent = `${line} に15分の遅延を発生させました`;
-}
-
-function submitChat(e) {
-  e.preventDefault();
-  const text = $("chat-text").value.trim();
-  if (text) say(text);
-}
-$("chat-form").addEventListener("submit", submitChat);
-$("chat-text").addEventListener("keydown", (e) => {
-  // 日本語入力の変換確定（isComposing）で送信してしまわないようにする。
-  if (e.key === "Enter" && !e.isComposing) submitChat(e);
-});
-$("seed").addEventListener("click", seed);
-$("recalc").addEventListener("click", async () => refresh(await call(`/events/${state.eventId}/route/recalculate`, { method: "POST" })));
-$("disrupt").addEventListener("click", disrupt);
-$("movie-photos").addEventListener("click", async () => {
-  await refresh(await call(`/events/${state.eventId}/movie/photos`, {
-    method: "POST",
-    body: JSON.stringify({ photos: [
-      { image_ref: "demo-photo-1", caption: "出会いのころ" },
-      { image_ref: "demo-photo-2", caption: "友人との旅行", contains_third_party: true },
-      { image_ref: "demo-photo-3", caption: "プロポーズ" },
-    ] }),
-  }));
-});
-$("movie-propose").addEventListener("click", async () => {
-  const res = await call(`/events/${state.eventId}/movie/proposal`, {
-    method: "POST",
-    body: JSON.stringify({ theme: $("movie-theme").value || "生い立ち" }),
-  });
-  await refresh(res.event);
-  toast("構成を起案しました。「3. 同意ゲート」で承認すると生成が始まります。");
-});
-$("sweep").addEventListener("click", async () => {
-  // 利用者の操作なしにエージェントが動く経路。結果はポーリングで届く。
-  const result = await call("/tasks/sweep", { method: "POST" });
-  const moved = result.recalculated.length + result.alerted.length;
-  if (!moved) toast("定期ジョブ実行：動かすべきものはありませんでした。");
-  await pollChat(true);
-});
-$("check-return").addEventListener("click", async () => {
-  const res = await call(`/events/${state.eventId}/return/check`, { method: "POST" });
-  await refresh(res.event);
-  toast(res.alert ? res.alert.message : "返却期限まで余裕があるため、通知は行いませんでした。");
-});
-$("complete-return").addEventListener("click", async () =>
-  refresh(await call(`/events/${state.eventId}/return/complete`, { method: "POST" })));
-
-// リロードしても進行中の式を拾い直す（チャット履歴と画面の状態を合わせる）。
-async function bootstrap() {
-  const events = await call(`/events?uid=${UID}`);
-  const active = events.filter((e) => !["completed", "cancelled"].includes(e.status)).pop();
-  if (active) {
-    await refresh(active);
-    if (active.candidates?.length) await renderPickups();
-  } else {
-    await renderChat();
-  }
-}
-
-bootstrap();
-setInterval(pollChat, 5000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) pollChat(); });
-</script>
 </body>
 </html>

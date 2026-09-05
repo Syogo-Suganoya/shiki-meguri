@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from app.domain.models import OutfitCategory, PickupOption, TransitLeg
-from app.domain.timeline import apply_delays, build_timeline, make_recalc_record
+from app.domain.timeline import build_timeline
 from app.infra.clock import JST
 
 CEREMONY = datetime(2026, 10, 10, 13, 0, tzinfo=JST)
@@ -126,17 +126,3 @@ def test_出発時刻を過ぎていたら実現不能():
     assert plan.feasible is False
     assert "出発時刻" in (plan.warning or "")
 
-
-def test_遅延を反映すると出発が前倒しになる():
-    before = _build()
-    delayed_legs = apply_delays(before.legs, {"JR中央線": 12})
-    after = _build(leg_to_pickup=delayed_legs[0], leg_to_venue=delayed_legs[1])
-
-    record = make_recalc_record(
-        previous=before,
-        current=after,
-        reason="JR中央線 遅延12分",
-        recalculated_at=CEREMONY - timedelta(hours=4),
-    )
-    assert record.delay_minutes == 12
-    assert after.departure_at == before.departure_at - timedelta(minutes=12)

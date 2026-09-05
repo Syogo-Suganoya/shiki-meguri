@@ -174,69 +174,6 @@ async def test_振袖は自宅配送が候補から外れる(orchestrator: Orche
     assert "home_delivery" not in {o.kind for o in event.pickup_options}
 
 
-# ---------------------------------------------------------------- 遅延再計算
-
-
-async def test_遅延は自律的に再計算され通知される(orchestrator: Orchestrator, deps: Deps):
-    event = await _prepare(orchestrator)
-    event, consent = await orchestrator.propose_reservation(
-        event.event_id, event.candidates[0].outfit_id
-    )
-    event = await orchestrator.decide_consent(event.event_id, consent.consent_id, True)
-    before = event.route.departure_at
-
-    line = event.route.legs[0].lines[0]
-    deps.transit.inject(line, 15)
-    event = await orchestrator.recalculate(event.event_id)
-
-    assert event.route.departure_at == before - timedelta(minutes=15)
-    assert len(event.route.history) == 1
-    assert event.route.history[0].delay_minutes == 15
-
-    log = next(
-        log for log in await deps.audit.list() if log.action == "recalculate_timeline"
-    )
-    assert log.payload["autonomous_execution"] is True
-    assert any(m.kind == "delay" for m in await deps.chat.history("u1"))
-
-
-async def test_同じ遅延を繰り返し通知しない(orchestrator: Orchestrator, deps: Deps):
-    """定期実行のたびに同じ遅延を通知すると、利用者には騒音になる。"""
-
-    event = await _prepare(orchestrator)
-    event, consent = await orchestrator.propose_reservation(
-        event.event_id, event.candidates[0].outfit_id
-    )
-    event = await orchestrator.decide_consent(event.event_id, consent.consent_id, True)
-
-    deps.transit.inject(event.route.legs[0].lines[0], 15)
-    event = await orchestrator.recalculate(event.event_id)
-    after_first = len([m for m in await deps.chat.history("u1") if m.kind == "delay"])
-
-    event = await orchestrator.recalculate(event.event_id)
-    assert len(event.route.history) == 1
-    assert (
-        len([m for m in await deps.chat.history("u1") if m.kind == "delay"])
-        == after_first
-    )
-
-    # 遅延が伸びたときは改めて通知する。
-    deps.transit.inject(event.route.legs[0].lines[0], 25)
-    event = await orchestrator.recalculate(event.event_id)
-    assert len(event.route.history) == 2
-
-
-async def test_遅延がなければ再計算しない(orchestrator: Orchestrator):
-    event = await _prepare(orchestrator)
-    event, consent = await orchestrator.propose_reservation(
-        event.event_id, event.candidates[0].outfit_id
-    )
-    event = await orchestrator.decide_consent(event.event_id, consent.consent_id, True)
-
-    event = await orchestrator.recalculate(event.event_id)
-    assert event.route.history == []
-
-
 # ---------------------------------------------------------------- 返却監視
 
 
@@ -310,3 +247,107 @@ async def test_慶弔の当事者情報を保持するフィールドがない(o
 
     for forbidden in ("deceased", "relationship", "couple_name", "attendee_name"):
         assert forbidden not in fields
+
+
+async def test_駅を変えてもパーソナルカラーの解析結果は消えない(orchestrator):
+    """顔画像は破棄済みで、残っているのは解析結果だけ。上書き登録で失ってはいけない。"""
+
+    user = await orchestrator.register_user("u-keep", "東京")
+    user = await orchestrator.tryon.analyze_personal_color(user, "photo-u-keep")
+    assert user.personal_color is not None
+
+    updated = await orchestrator.register_user("u-keep", "吉祥寺", size="L")
+    assert updated.home_station == "吉祥寺"
+    assert updated.size == "L"
+    assert updated.personal_color == user.personal_color
+
+
+# ------------------------------------------------------------ 手配のやり直し
+
+
+async def _confirmed(orchestrator: Orchestrator):
+    """予約確定まで進んだイベントを作る。"""
+
+    event = await _prepare(orchestrator)
+    event, consent = await orchestrator.propose_reservation(
+        event.event_id, event.candidates[0].outfit_id
+    )
+    return await orchestrator.decide_consent(event.event_id, consent.consent_id, True)
+
+
+async def test_確定済みの予約は黙って捨てない(orchestrator: Orchestrator, deps: Deps):
+    """上書きすると、事業者に予約が残ったままアプリだけ未予約になる。"""
+
+    event = await _confirmed(orchestrator)
+    reservation_id = event.outfit.reservation_id
+    assert reservation_id
+
+    with pytest.raises(ValueError, match="予約が確定"):
+        await orchestrator.propose_reservation(
+            event.event_id, event.candidates[1].outfit_id
+        )
+
+    kept = await deps.repo.get_event(event.event_id)
+    assert kept.outfit.reservation_id == reservation_id
+    assert deps.rental.cancelled == []
+
+
+async def test_衣装を変えるときは先に予約を取り消す(orchestrator: Orchestrator, deps: Deps):
+    event = await _confirmed(orchestrator)
+    reservation_id = event.outfit.reservation_id
+
+    event, consent = await orchestrator.propose_reservation(
+        event.event_id, event.candidates[1].outfit_id, replace=True
+    )
+
+    assert deps.rental.cancelled == [reservation_id]
+    assert event.outfit.candidate.outfit_id == event.candidates[1].outfit_id
+    assert event.outfit.state is RentalState.AWAITING_CONSENT
+    assert consent.status is ConsentStatus.PENDING
+    # 取り消しは本人にも伝える。
+    assert any("取り消しました" in m.text for m in await deps.chat.history("u1"))
+    assert any(
+        log.action == "reservation_cancelled" for log in await deps.audit.list()
+    )
+
+
+async def test_承認待ちの起案は二重に出さない(orchestrator: Orchestrator, deps: Deps):
+    event = await _prepare(orchestrator)
+    event, first = await orchestrator.propose_reservation(
+        event.event_id, event.candidates[0].outfit_id
+    )
+    event, second = await orchestrator.propose_reservation(
+        event.event_id, event.candidates[1].outfit_id
+    )
+
+    pending = [c for c in event.consents if c.status is ConsentStatus.PENDING]
+    assert [c.consent_id for c in pending] == [second.consent_id]
+    assert event.find_consent(first.consent_id).status is ConsentStatus.SUPERSEDED
+    # 予約は入っていないので、取り消す相手もいない。
+    assert deps.rental.cancelled == []
+
+
+async def test_受取場所は指名できる(orchestrator: Orchestrator):
+    event = await _prepare(orchestrator)
+    options = [e.option for e in await orchestrator.arrange.evaluate_pickups(
+        event, await orchestrator.deps.repo.get_user("u1")
+    )]
+    choice = options[-1]  # 最良ではない案をあえて選ぶ
+
+    event, _ = await orchestrator.propose_reservation(
+        event.event_id, event.candidates[0].outfit_id, pickup_id=choice.pickup_id
+    )
+    assert event.schedule.pickup.pickup_id == choice.pickup_id
+
+
+async def test_受取済みなら衣装を変えられない(orchestrator: Orchestrator):
+    event = await _confirmed(orchestrator)
+    event = event.model_copy(
+        update={"outfit": event.outfit.model_copy(update={"state": RentalState.PICKED_UP})}
+    )
+    await orchestrator.deps.repo.save_event(event)
+
+    with pytest.raises(ValueError, match="受取済み"):
+        await orchestrator.propose_reservation(
+            event.event_id, event.candidates[1].outfit_id, replace=True
+        )

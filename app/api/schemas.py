@@ -8,9 +8,23 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.domain.models import EventType
+from app.infra.clock import JST
+
+
+def to_jst(value: datetime | None) -> datetime | None:
+    """受け取った時刻を JST に揃える。
+
+    画面は ISO 文字列（UTC）で送ってくるが、提案文も逆算タイムラインも
+    `%H:%M` をそのまま日本時間として読ませる。ここで直しておかないと、
+    保存値は正しいのに文面だけ 9 時間ずれる。タイムゾーンなしは JST とみなす。
+    """
+
+    if value is None:
+        return None
+    return value.replace(tzinfo=JST) if value.tzinfo is None else value.astimezone(JST)
 
 
 class RegisterUserRequest(BaseModel):
@@ -37,6 +51,22 @@ class CreateEventRequest(BaseModel):
     type: EventType | None = None
     message: str | None = None
 
+    _jst = field_validator("ceremony_start_at", "ceremony_end_at")(to_jst)
+
+
+class StartIntakeRequest(BaseModel):
+    """入力フォームからの受付。利用者登録と式の登録をまとめて受ける。"""
+
+    uid: str = "demo-user"
+    type: EventType
+    ceremony_start_at: datetime
+    venue_station: str
+    venue_name: str = ""
+    home_station: str
+    size: str = "M"
+
+    _jst = field_validator("ceremony_start_at")(to_jst)
+
 
 class ProposeOutfitsRequest(BaseModel):
     # 画像そのものではなく、アップロード済み一時領域への参照だけを受け取る。
@@ -46,6 +76,10 @@ class ProposeOutfitsRequest(BaseModel):
 
 class ProposeReservationRequest(BaseModel):
     outfit_id: str
+    # 受取場所の指名。省略すると総コスト最良の案を起案する。
+    pickup_id: str | None = None
+    # 予約確定済みのものを差し替える意思表示。既存の予約は取り消される。
+    replace: bool = False
 
 
 class ConsentDecisionRequest(BaseModel):
@@ -73,11 +107,6 @@ class PhotoConsentRequest(BaseModel):
 
 class ProposeMovieRequest(BaseModel):
     theme: str = Field(min_length=1, max_length=100)
-
-
-class DisruptRequest(BaseModel):
-    line: str
-    delay_minutes: int = Field(ge=0, le=180)
 
 
 class SeedRequest(BaseModel):

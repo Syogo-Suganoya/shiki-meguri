@@ -67,16 +67,9 @@ class TransitClient(abc.ABC):
         self, from_station: str, to_station: str, arrive_by: datetime | None = None
     ) -> TransitLeg: ...
 
-    @abc.abstractmethod
-    async def disruptions(self, lines: list[str]) -> dict[str, int]:
-        """路線名 → 遅延見込み（分）。"""
-
 
 class MockTransitClient(TransitClient):
     """座標から距離を出し、所要時間・運賃・乗換回数を決定的に算出する。"""
-
-    def __init__(self) -> None:
-        self._injected: dict[str, int] = {}
 
     async def search(
         self, from_station: str, to_station: str, arrive_by: datetime | None = None
@@ -95,19 +88,6 @@ class MockTransitClient(TransitClient):
             lines=lines,
         )
 
-    async def disruptions(self, lines: list[str]) -> dict[str, int]:
-        # デモでは /demo/disrupt で注入された遅延だけを返す（平常時は空）。
-        return {line: self._injected[line] for line in lines if line in self._injected}
-
-    def inject(self, line: str, delay_minutes: int) -> None:
-        """デモ操作用。運行情報の異常を人為的に発生させる。"""
-        if delay_minutes <= 0:
-            self._injected.pop(line, None)
-        else:
-            self._injected[line] = delay_minutes
-
-    def clear(self) -> None:
-        self._injected.clear()
 
 
 class EkispertMcpClient(TransitClient):
@@ -142,16 +122,6 @@ class EkispertMcpClient(TransitClient):
             lines=list(data.get("lines", [])),
         )
 
-    async def disruptions(self, lines: list[str]) -> dict[str, int]:
-        async with httpx.AsyncClient(timeout=10) as client:
-            res = await client.post(
-                f"{self._base_url}/tools/service_status",
-                json={"lines": lines},
-                headers={"Authorization": f"Bearer {self._api_key}"},
-            )
-            res.raise_for_status()
-            data = res.json()
-        return {d["line"]: int(d.get("delayMinutes", 0)) for d in data.get("statuses", [])}
 
 
 def _distance_km(a: str, b: str) -> float:

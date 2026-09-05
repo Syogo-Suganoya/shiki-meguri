@@ -10,20 +10,20 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 
-from app.adapters.ekispert import MockTransitClient
+from app.adapters.ekispert import STATION_COORDS
 from app.agents.orchestrator import Orchestrator
 from app.api.schemas import (
     AddMoviePhotosRequest,
     ChatRequest,
     ConsentDecisionRequest,
     CreateEventRequest,
-    DisruptRequest,
     PhotoConsentRequest,
     ProposeMovieRequest,
     ProposeOutfitsRequest,
     ProposeReservationRequest,
     RegisterUserRequest,
     SeedRequest,
+    StartIntakeRequest,
 )
 from app.domain.models import EventType
 
@@ -59,7 +59,32 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
             raise HTTPException(404, "利用者が見つかりません")
         return user
 
+    @router.get("/stations")
+    async def list_stations() -> list[str]:
+        """入力フォームの駅の選択肢。会場も出発地もここから選ぶ。"""
+
+        return list(STATION_COORDS)
+
     # -------------------------------------------------------------- イベント
+
+    @router.post("/events/start")
+    async def start_intake(req: StartIntakeRequest):
+        """入力フォームからの受付。利用者登録から衣装候補までを一度に進める。"""
+
+        for station in (req.venue_station, req.home_station):
+            if station not in STATION_COORDS:
+                raise HTTPException(400, f"対応していない駅です: {station}")
+        return await _guard(
+            orchestrator.start_from_form(
+                uid=req.uid,
+                home_station=req.home_station,
+                size=req.size,
+                event_type=req.type,
+                ceremony_start_at=req.ceremony_start_at,
+                venue_name=req.venue_name or f"{req.venue_station}の会場",
+                venue_station=req.venue_station,
+            )
+        )
 
     @router.post("/events")
     async def create_event(req: CreateEventRequest):
@@ -104,7 +129,9 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
     @router.post("/events/{event_id}/reservation")
     async def propose_reservation(event_id: str, req: ProposeReservationRequest):
         event, consent = await _guard(
-            orchestrator.propose_reservation(event_id, req.outfit_id)
+            orchestrator.propose_reservation(
+                event_id, req.outfit_id, pickup_id=req.pickup_id, replace=req.replace
+            )
         )
         return {"event": event, "consent": consent}
 
@@ -154,9 +181,6 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
     async def plan_route(event_id: str):
         return await _guard(orchestrator.plan_route(event_id))
 
-    @router.post("/events/{event_id}/route/recalculate")
-    async def recalculate(event_id: str):
-        return await _guard(orchestrator.recalculate(event_id))
 
     # -------------------------------------------------------------- 返却
 
@@ -223,7 +247,7 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
     async def chat_history(uid: str, after: datetime | None = None):
         """`after` を渡すと、それ以降の発言だけを返す（画面のポーリング用）。
 
-        エージェント側から始まる通知（遅延の再計算など）は利用者の操作を
+        エージェント側から始まる通知（返却期限の注意など）は利用者の操作を
         待たないため、画面はここを定期的に読みに来る。
         """
         messages = await deps.chat.history(uid)
@@ -235,17 +259,11 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
 
     @router.post("/tasks/sweep")
     async def sweep():
-        """Cloud Scheduler → Cloud Run（agent）。遅延再計算・返却監視・TTL 削除。"""
+        """Cloud Scheduler → Cloud Run（agent）。返却監視・TTL 削除。"""
         return await orchestrator.sweep()
 
     # -------------------------------------------------------------- デモ操作
 
-    @router.post("/demo/disrupt")
-    async def disrupt(req: DisruptRequest):
-        if not isinstance(deps.transit, MockTransitClient):
-            raise HTTPException(400, "mock の経路クライアントでのみ利用できます")
-        deps.transit.inject(req.line, req.delay_minutes)
-        return {"line": req.line, "delay_minutes": req.delay_minutes}
 
     @router.post("/demo/seed")
     async def seed(req: SeedRequest):

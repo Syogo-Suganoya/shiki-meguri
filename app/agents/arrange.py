@@ -114,15 +114,35 @@ class ArrangeAgent:
         return sorted(evaluations, key=lambda e: e.score)
 
     async def propose(
-        self, event: Event, user: UserProfile, outfit_id: str
+        self,
+        event: Event,
+        user: UserProfile,
+        outfit_id: str,
+        pickup_id: str | None = None,
+        replace: bool = False,
     ) -> tuple[Event, ConsentRequest]:
-        """衣装＋受取場所を確定案としてまとめ、同意ゲートに載せる。"""
+        """衣装＋受取場所を確定案としてまとめ、同意ゲートに載せる。
+
+        `pickup_id` を渡せば受取場所を指名できる（省略時は総コスト最良）。
+        すでに予約が確定している場合は `replace=True` を要求し、
+        **先に事業者側の予約を取り消してから**新しい案を起案する。
+        黙って上書きすると、事業者には予約が残ったままアプリ側だけ
+        「予約していない」状態になる。
+        """
 
         candidate = _find_candidate(event, outfit_id)
+        event = await self._release_current(event, replace=replace)
         evaluations = await self.evaluate_pickups(event, user)
         if not evaluations:
             raise ValueError("受取可能な場所が見つかりませんでした")
-        best = evaluations[0]
+        if pickup_id is None:
+            best = evaluations[0]
+        else:
+            best = next(
+                (e for e in evaluations if e.option.pickup_id == pickup_id), None
+            )
+            if best is None:
+                raise ValueError(f"選べない受取場所です: {pickup_id}")
 
         now = self._d.clock.now()
         amount = candidate.rental_fee_yen + best.fee_yen
@@ -187,6 +207,56 @@ class ArrangeAgent:
         )
         await self._notify(event, user, consent)
         return event, consent
+
+    async def _release_current(self, event: Event, *, replace: bool) -> Event:
+        """起案し直す前に、いまの手配を明示的に畳む。
+
+        - 受取済み以降は変えられない（衣装が手元にある）
+        - 予約確定済みは `replace` を要求し、事業者側の予約を取り消す
+        - 承認待ちの起案は「差し替え」として取り下げる（承認札を二重に出さない）
+        """
+
+        outfit = event.outfit
+        now = self._d.clock.now()
+
+        if outfit is not None and outfit.state in {
+            RentalState.PICKED_UP,
+            RentalState.RETURNING,
+            RentalState.RETURNED,
+            RentalState.OVERDUE,
+        }:
+            raise ValueError("受取済みのため、衣装は変更できません")
+
+        if outfit is not None and outfit.state is RentalState.RESERVED:
+            if not replace:
+                raise ValueError(
+                    "すでに予約が確定しています。変更するには、いまの予約の取り消しが要ります"
+                )
+            if outfit.reservation_id:
+                await self._d.rental.cancel(outfit.reservation_id)
+                await self._d.audit.record(
+                    agent=AGENT,
+                    action="reservation_cancelled",
+                    basis="本人が衣装を変更。差し替え前に事業者側の予約を取り消した。",
+                    event_id=event.event_id,
+                    payload={"reservation_id": outfit.reservation_id},
+                )
+                await self._d.chat.say(
+                    event.uid,
+                    f"予約（{outfit.reservation_id}）を取り消しました。"
+                    "新しい内容をご確認のうえ、改めて承認をお願いします。",
+                    kind="consent",
+                    event_id=event.event_id,
+                )
+
+        # 承認待ちのまま残っている起案は取り下げる。
+        superseded = [
+            c.model_copy(update={"status": ConsentStatus.SUPERSEDED, "decided_at": now})
+            if c.status is ConsentStatus.PENDING and c.action == "reserve"
+            else c
+            for c in event.consents
+        ]
+        return event.model_copy(update={"consents": superseded})
 
     async def decide(
         self, event: Event, consent_id: str, approved: bool, note: str | None = None

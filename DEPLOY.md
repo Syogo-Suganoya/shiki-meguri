@@ -150,7 +150,7 @@ gcloud firestore fields ttls update ttl_at \
 
 ## 8. Cloud Scheduler（定期実行）
 
-遅延の再計算・返却期限の監視・TTL 超過の検知をまとめて回す。
+返却期限の監視と TTL 超過の検知をまとめて回す。
 
 ```bash
 gcloud scheduler jobs create http shiki-sweep \
@@ -383,7 +383,7 @@ CD に含めていない（作り直しの事故を避けるため、インフ�
 
 - **`/api/tasks/sweep` が公開される**
   未認証呼び出しを許可すると、この定期実行エンドポイントも外から叩ける。
-  実行内容は再計算と通知が中心だが、TTL 超過イベントの検知も含む。
+  実行内容は返却期限の監視と通知が中心だが、TTL 超過イベントの検知も含む。
   本番では Cloud Run を非公開にして Cloud Scheduler に OIDC トークンを付ける
   （`--oidc-service-account-email`）か、このパスだけ別サービスに分ける。
 

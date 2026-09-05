@@ -113,6 +113,28 @@ services:
     volumes:
       - ./docs:/srv/docs
 
+  # 紹介ページに載せる画面の写しを撮る。空のエミュレータに向けて走らせること。
+  # `docker compose down && docker compose --profile shots up --build shots`
+  shots:
+    profiles: ["shots"]
+    build:
+      context: .
+      dockerfile: services/shots/Dockerfile
+    image: shiki-meguri-shots
+    user: root
+    working_dir: /work
+    environment:
+      BASE_URL: http://api:8080
+      NODE_PATH: /usr/src/app/node_modules
+      # 画面の時刻表示は日本時間で固定してあるが、「いま」の位置は端末の時計で決まる。
+      TZ: Asia/Tokyo
+    entrypoint: ["node", "docs/shots.js"]
+    volumes:
+      - .:/work
+    depends_on:
+      api:
+        condition: service_healthy
+
   # テスト実行用。`docker compose run --rm test`
   test:
     profiles: ["test"]

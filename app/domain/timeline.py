@@ -2,7 +2,7 @@
 
 式の開始時刻を起点に、会場到着 → 移動 → 着付け → 受取 → 出発 の順で
 時間を「後ろから前へ」割り付ける純粋関数。外部 I/O を持たないため
-遅延再計算のたびに何度でも呼び直せる。
+受取場所を変えて何度でも呼び直せる。
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 from app.domain.models import (
     OutfitCategory,
     PickupOption,
-    RecalcRecord,
     RoutePlan,
     TimelineStep,
     TransitLeg,
@@ -194,38 +193,6 @@ def build_timeline(
     )
 
 
-def apply_delays(legs: list[TransitLeg], delays: dict[str, int]) -> list[TransitLeg]:
-    """路線名 → 遅延分 のマップを経路に反映した新しい経路を返す。"""
-
-    updated: list[TransitLeg] = []
-    for leg in legs:
-        delay = max((delays.get(line, 0) for line in leg.lines), default=0)
-        updated.append(leg.model_copy(update={"delay_minutes": delay}))
-    return updated
-
-
-def make_recalc_record(
-    *,
-    previous: RoutePlan,
-    current: RoutePlan,
-    reason: str,
-    recalculated_at: datetime,
-) -> RecalcRecord:
-    prev_departure = previous.departure_at or recalculated_at
-    new_departure = current.departure_at or recalculated_at
-    delta = int((prev_departure - new_departure).total_seconds() // 60)
-    return RecalcRecord(
-        recalculated_at=recalculated_at,
-        reason=reason,
-        delay_minutes=delta,
-        previous_departure_at=prev_departure,
-        new_departure_at=new_departure,
-        feasible=current.feasible,
-    )
-
-
 def _leg_detail(leg: TransitLeg) -> str:
     parts = [f"{leg.total_minutes}分", f"{leg.fare_yen}円", f"乗換{leg.transfers}回"]
-    if leg.delay_minutes:
-        parts.append(f"遅延+{leg.delay_minutes}分")
     return " / ".join(parts)

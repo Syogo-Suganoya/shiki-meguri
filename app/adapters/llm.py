@@ -65,15 +65,19 @@ class GeminiLlmClient(LlmClient):
 
 
 def _outfit_rationale(ctx: dict, mourning: bool) -> str:
+    """なぜこれを薦めるかだけを書く。
+
+    名前・色・サイズは画面のすぐ上に出ているので繰り返さない。
+    """
+
     if mourning:
-        return f"{ctx['name']}（{ctx['size']}）。式に適した無地の一式で、当日中の手配が可能です。"
+        return "式に適した無地の一式です。当日中の手配もできます。"
     fit = (
         f"{ctx['season_label']}の肌映りに合う色です"
         if ctx.get("fits")
         else f"{ctx['season_label']}には効かせ色になります"
     )
     return (
-        f"{ctx['name']}（{ctx['color']}／{ctx['size']}）。"
         f"{fit}。{ctx['event_label']}のドレスコードには沿います。"
     )
 
@@ -83,14 +87,6 @@ def _timeline_summary(ctx: dict, mourning: bool) -> str:
     return (
         f"{head}{ctx['departure']}に{ctx['home_station']}を出発し、"
         f"{ctx['pickup_label']}で受け取り、{ctx['ceremony']}の開式に間に合います。"
-    )
-
-
-def _delay_notice(ctx: dict, mourning: bool) -> str:
-    return (
-        f"{ctx['line']}に約{ctx['delay']}分の遅れが出ています。"
-        f"出発を{ctx['new_departure']}に前倒ししました。"
-        + ("" if ctx.get("feasible", True) else "現在の受取場所では間に合わないため、変更案をご確認ください。")
     )
 
 
@@ -119,7 +115,6 @@ def _consent_summary(ctx: dict, mourning: bool) -> str:
 _TEMPLATES = {
     "outfit_rationale": _outfit_rationale,
     "timeline_summary": _timeline_summary,
-    "delay_notice": _delay_notice,
     "return_reminder": _return_reminder,
     "consent_summary": _consent_summary,
     "movie_scene": _movie_scene,
