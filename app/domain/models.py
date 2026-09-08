@@ -302,79 +302,6 @@ class RoutePlan(BaseModel):
 # ---------------------------------------------------------------- 同意ゲート
 
 
-class MovieStatus(str, Enum):
-    DRAFT = "draft"  # 写真を集めている
-    CONSENT_REQUIRED = "consent_required"  # 第三者の利用同意が未確認
-    AWAITING_CONSENT = "awaiting_consent"  # 制作費の本人承認待ち
-    RENDERING = "rendering"
-    COMPLETED = "completed"
-
-
-class PhotoAsset(BaseModel):
-    """素材写真。実体は持たず一時領域への参照だけを保持する（設計書 §7-1）。"""
-
-    photo_id: str
-    image_ref: str
-    caption: str | None = None
-    # 設計書 §11 ガバナンス: 第三者（友人・家族）が写る写真は利用同意を確認する
-    contains_third_party: bool = False
-    consent_confirmed: bool = False
-    restored_url: str | None = None
-    restored_at: datetime | None = None
-
-    @property
-    def usable(self) -> bool:
-        """同意の要否を踏まえて、生成に回してよいか。"""
-        return not self.contains_third_party or self.consent_confirmed
-
-
-class MovieScene(BaseModel):
-    scene_id: str
-    order: int
-    photo_id: str
-    title: str
-    narration: str
-    duration_seconds: int = 10
-    video_url: str | None = None
-    model: str | None = None
-
-
-class MovieProject(BaseModel):
-    """events/{eventId}.movie — 式ムービー工房（設計書 §11）。
-
-    Event の中に持つことで、素材も生成物も本体の TTL で一緒に消える
-    （「式後の素材自動削除」を別の仕組みにしない）。
-    """
-
-    project_id: str
-    status: MovieStatus = MovieStatus.DRAFT
-    theme: str | None = None
-    photos: list[PhotoAsset] = Field(default_factory=list)
-    scenes: list[MovieScene] = Field(default_factory=list)
-    bgm_url: str | None = None
-    bgm_prompt: str | None = None
-    bgm_model: str | None = None
-    # AI 生成物であることの明示（設計書 §11 ガバナンス）
-    watermark: str = "AI生成"
-    delete_after: datetime | None = None
-    created_at: datetime
-    updated_at: datetime
-
-    def find_photo(self, photo_id: str) -> PhotoAsset | None:
-        for p in self.photos:
-            if p.photo_id == photo_id:
-                return p
-        return None
-
-    def pending_consent_photos(self) -> list[PhotoAsset]:
-        """第三者が写るのに同意が未確認の写真。"""
-        return [p for p in self.photos if p.contains_third_party and not p.consent_confirmed]
-
-    @property
-    def usable_photos(self) -> list[PhotoAsset]:
-        return [p for p in self.photos if p.usable]
-
-
 class ConsentStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
@@ -390,7 +317,7 @@ class ConsentRequest(BaseModel):
 
     consent_id: str
     event_id: str
-    action: Literal["reserve", "extend", "ship", "movie"]
+    action: Literal["reserve", "extend", "ship"]
     summary: str
     amount_yen: int
     breakdown: dict[str, int] = Field(default_factory=dict)
@@ -446,7 +373,6 @@ class Event(BaseModel):
     consents: list[ConsentRequest] = Field(default_factory=list)
     return_plan: ReturnPlan | None = None
     alerts: list[ReturnAlert] = Field(default_factory=list)
-    movie: MovieProject | None = None  # 設計書 §11 追加案
     created_at: datetime
     updated_at: datetime
     ttl_at: datetime | None = None  # 式終了 + 7日で自動削除

@@ -94,10 +94,6 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
 | POST | `/events/{id}/reservation` | 手配の**起案**（金銭は確定しない）。`pickup_id` で受取場所を指名、`replace` で確定済みの差し替え |
 | POST | `/events/{id}/consents/{consent_id}` | 承認／却下。ここで初めて確定する |
 | POST | `/events/{id}/return/check` | 返却期限との突合 |
-| POST | `/events/{id}/movie/photos` | ムービー素材の登録（参照のみ） |
-| POST | `/events/{id}/movie/photo-consent` | 第三者が写る写真の利用同意 |
-| POST | `/events/{id}/movie/proposal` | 構成の**起案**（生成はまだ始めない） |
-| GET | `/events/{id}/movie` | ムービーの状態 |
 | GET | `/audit?event_id=` | 監査ログ |
 | POST | `/tasks/sweep` | 定期実行（Cloud Scheduler から叩く）。返却監視・TTL 削除 |
 | POST | `/demo/seed` | 動作確認用（サンプルの式を投入する） |
@@ -115,7 +111,6 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
 | `GEMINI_MODE` / `GEMINI_API_KEY` | 提案文の生成（慶弔マナー考慮） |
 | `YOUCAM_MODE` / `YOUCAM_API_KEY` | AI Clothes Try-On, Facial Color Tones |
 | `EKISPERT_MODE` / `EKISPERT_MCP_URL` | 駅すぱあと API MCPサーバー |
-| `GMI_MODE` / `GMI_API_KEY` | GMI Cloud（写真補正・動画化・BGM生成） |
 
 `.env` はコミットしない。本番の秘密情報は Secret Manager で管理し、Cloud Run に
 環境変数として注入する（イメージに焼き込まない）。

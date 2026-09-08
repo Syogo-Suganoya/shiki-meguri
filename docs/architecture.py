@@ -62,7 +62,6 @@ with Diagram(
             Storage("YouCam API"),
             Storage("駅すぱあと API\nMCPサーバー"),
             Storage("レンタル事業者API\n（モック）"),
-            Storage("GMI Cloud\n補正 / 動画化 / BGM"),
         ]
 
     with Cluster("データ", graph_attr=cluster_attr):

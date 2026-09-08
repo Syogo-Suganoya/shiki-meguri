@@ -97,14 +97,6 @@ def _return_reminder(ctx: dict, mourning: bool) -> str:
     )
 
 
-def _movie_scene(ctx: dict, mourning: bool) -> str:
-    caption = ctx.get("caption") or "この一枚"
-    return (
-        f"（{ctx['order']}/{ctx['total']}）{caption}。"
-        f"{ctx['theme']}の流れに沿って、ゆっくり寄るカメラワークで。"
-    )
-
-
 def _consent_summary(ctx: dict, mourning: bool) -> str:
     return (
         f"{ctx['summary']} 合計{ctx['amount']:,}円です。"
@@ -117,7 +109,6 @@ _TEMPLATES = {
     "timeline_summary": _timeline_summary,
     "return_reminder": _return_reminder,
     "consent_summary": _consent_summary,
-    "movie_scene": _movie_scene,
 }
 
 

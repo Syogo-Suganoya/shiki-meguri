@@ -14,7 +14,6 @@ from app.agents import conversation
 from app.agents.arrange import ArrangeAgent
 from app.agents.deps import Deps
 from app.agents.monitor import EXTENSION_MINUTES, ReturnMonitorAgent
-from app.agents.movie import MovieAgent
 from app.agents.route import RouteAgent
 from app.agents.tryon import TryOnAgent
 from app.domain.models import (
@@ -24,7 +23,6 @@ from app.domain.models import (
     Event,
     EventStatus,
     EventType,
-    MovieStatus,
     ReturnAlert,
     Schedule,
     UserProfile,
@@ -54,7 +52,6 @@ class Orchestrator:
         self.arrange = ArrangeAgent(deps)
         self.route = RouteAgent(deps)
         self.monitor = ReturnMonitorAgent(deps)
-        self.movie = MovieAgent(deps)
 
     # ------------------------------------------------------------ 受付
 
@@ -173,22 +170,6 @@ class Orchestrator:
                 uid,
                 f"{consent.summary} 合計{consent.amount_yen:,}円です。"
                 "「承認」または「却下」とお送りください（承認まで確定しません）。",
-                kind="consent",
-                event_id=event.event_id,
-            )
-            return event
-
-        # ムービー制作費の同意は式の状態を変えないので、ここで拾う。
-        pending = event.pending_consent()
-        if pending is not None and pending.action == "movie":
-            if conversation.contains(text, conversation.APPROVE_WORDS):
-                return await self.decide_consent(event.event_id, pending.consent_id, True)
-            if conversation.contains(text, conversation.REJECT_WORDS):
-                return await self.decide_consent(event.event_id, pending.consent_id, False)
-            await self._say(
-                uid,
-                f"{pending.summary} 合計{pending.amount_yen:,}円です。"
-                "「承認」または「却下」とお送りください（承認まで生成は始めません）。",
                 kind="consent",
                 event_id=event.event_id,
             )
@@ -358,8 +339,6 @@ class Orchestrator:
             return event
         if consent.action == "extend":
             return await self._apply_extension(event, consent, approved, note)
-        if consent.action == "movie":
-            return await self._decide_movie(event, consent, approved, note)
         raise ValueError(f"未対応の同意アクションです: {consent.action}")
 
     async def plan_route(self, event_id: str) -> Event:
@@ -369,22 +348,6 @@ class Orchestrator:
     async def check_return(self, event_id: str) -> tuple[Event, ReturnAlert | None]:
         event, user = await self._load(event_id)
         return await self.monitor.check(event, user)
-
-    async def add_movie_photos(
-        self, event_id: str, photos: list[tuple[str, str | None, bool]]
-    ) -> Event:
-        event, _ = await self._load(event_id)
-        return await self.movie.add_photos(event, photos)
-
-    async def confirm_movie_photo_consent(
-        self, event_id: str, photo_ids: list[str], confirmed: bool = True
-    ) -> Event:
-        event, _ = await self._load(event_id)
-        return await self.movie.confirm_photo_consent(event, photo_ids, confirmed)
-
-    async def propose_movie(self, event_id: str, theme: str) -> tuple[Event, ConsentRequest]:
-        event, _ = await self._load(event_id)
-        return await self.movie.propose(event, theme)
 
     async def mark_returned(self, event_id: str) -> Event:
         event, _ = await self._load(event_id)
@@ -465,48 +428,6 @@ class Orchestrator:
             consent_ref=consent.consent_id,
         )
         return event
-
-    async def _decide_movie(
-        self, event: Event, consent: ConsentRequest, approved: bool, note: str | None
-    ) -> Event:
-        """ムービー制作費の承認。承認されて初めて GMI Cloud を呼ぶ。"""
-
-        now = self._d.clock.now()
-        decided = consent.model_copy(
-            update={
-                "status": ConsentStatus.APPROVED if approved else ConsentStatus.REJECTED,
-                "decided_at": now,
-                "note": note,
-            }
-        )
-        event = event.model_copy(
-            update={
-                "consents": [
-                    decided if c.consent_id == consent.consent_id else c
-                    for c in event.consents
-                ],
-                "updated_at": now,
-            }
-        )
-        await self._d.repo.save_event(event)
-        await self._d.audit.record(
-            agent=AGENT,
-            action="movie_approved" if approved else "movie_rejected",
-            basis=f"本人{'承認' if approved else '却下'}（{consent.amount_yen}円）",
-            event_id=event.event_id,
-            consent_ref=consent.consent_id,
-        )
-        if not approved:
-            if event.movie is not None:
-                event = event.model_copy(
-                    update={"movie": event.movie.model_copy(update={"status": MovieStatus.DRAFT})}
-                )
-                await self._d.repo.save_event(event)
-            await self._say(
-                event.uid, "ムービーの制作は取りやめました。", event_id=event.event_id
-            )
-            return event
-        return await self.movie.render(event)
 
     async def _load(self, event_id: str) -> tuple[Event, UserProfile]:
         event = await self._d.repo.get_event(event_id)

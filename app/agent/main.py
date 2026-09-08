@@ -34,7 +34,6 @@ async def healthz() -> dict:
             "youcam": settings.youcam_mode,
             "ekispert": settings.ekispert_mode,
             "rental": settings.rental_mode,
-            "gmi": settings.gmi_mode,
             "db": settings.db_driver,
         },
     }

@@ -23,8 +23,6 @@ class Settings(BaseSettings):
     youcam_mode: Mode = "mock"
     ekispert_mode: Mode = "mock"
     rental_mode: Mode = "mock"
-    # 設計書 §11 追加案（式ムービー工房）
-    gmi_mode: Mode = "mock"
 
     # memory はテスト専用。開発はエミュレータ、本番は Firestore を使う。
     db_driver: Literal["memory", "firestore"] = "firestore"
@@ -36,16 +34,6 @@ class Settings(BaseSettings):
     youcam_secret_key: str = ""
     ekispert_api_key: str = ""
     ekispert_mcp_url: str = ""
-
-    # --- GMI Cloud（設計書 §11）------------------------------------------
-    gmi_api_key: str = ""
-    gmi_base_url: str = "https://console.gmicloud.ai/api/v1/ie/requestqueue/apikey/requests"
-    gmi_restore_model: str = "bria-fibo-restore"
-    gmi_restyle_model: str = "bria-fibo-restyle"
-    gmi_video_model: str = "Kling-Image2Video-V2.1-Pro"
-    gmi_music_model: str = "minimax-music-2.5"
-    # 動画生成は非同期。ポーリングの上限（秒）。
-    gmi_poll_timeout_seconds: int = 300
 
     # API から agent サービスを呼ぶ経路。inproc はローカル/テスト用。
     agent_transport: Literal["inproc", "http"] = "inproc"
@@ -61,11 +49,6 @@ class Settings(BaseSettings):
     event_ttl_days: int = 7
     # 会場到着の余裕（分）
     arrival_buffer_minutes: int = 15
-
-    # --- 式ムービー工房の料金（設計書 §11。モックの想定単価）----------------
-    movie_scene_price_yen: int = 300
-    movie_bgm_price_yen: int = 500
-    movie_scene_seconds: int = 10
 
 
 @lru_cache

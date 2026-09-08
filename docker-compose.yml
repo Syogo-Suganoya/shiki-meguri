@@ -19,7 +19,6 @@ services:
       YOUCAM_MODE: ${YOUCAM_MODE:-mock}
       EKISPERT_MODE: ${EKISPERT_MODE:-mock}
       RENTAL_MODE: ${RENTAL_MODE:-mock}
-      GMI_MODE: ${GMI_MODE:-mock}
       DB_DRIVER: ${DB_DRIVER:-firestore}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-shiki-meguri-local}
       FIRESTORE_EMULATOR_HOST: ${FIRESTORE_EMULATOR_HOST:-firestore:8200}
@@ -29,7 +28,6 @@ services:
       YOUCAM_SECRET_KEY: ${YOUCAM_SECRET_KEY:-}
       EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
       EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
-      GMI_API_KEY: ${GMI_API_KEY:-}
       # ガバナンス（設計書 §7）。0 = エージェントは 1 円も自律確定できない。
       AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-0}
     volumes:
@@ -62,7 +60,6 @@ services:
       YOUCAM_MODE: ${YOUCAM_MODE:-mock}
       EKISPERT_MODE: ${EKISPERT_MODE:-mock}
       RENTAL_MODE: ${RENTAL_MODE:-mock}
-      GMI_MODE: ${GMI_MODE:-mock}
       DB_DRIVER: ${DB_DRIVER:-firestore}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-shiki-meguri-local}
       FIRESTORE_EMULATOR_HOST: ${FIRESTORE_EMULATOR_HOST:-firestore:8200}
@@ -71,7 +68,6 @@ services:
       YOUCAM_SECRET_KEY: ${YOUCAM_SECRET_KEY:-}
       EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
       EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
-      GMI_API_KEY: ${GMI_API_KEY:-}
       AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-0}
     volumes:
       - ./app:/srv/app

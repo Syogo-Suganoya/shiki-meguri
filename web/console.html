@@ -172,8 +172,6 @@
   .hints button{font-size:12px;padding:4px 10px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:2px;cursor:pointer}
   .hints button:hover{border-color:var(--kei);color:var(--kei)}
 
-  /* -------------------------------------------------------- 別ページ扱い */
-  .aside-nav{max-width:1060px;margin:0 auto;padding:0 24px 46px;display:flex;gap:20px;flex-wrap:wrap}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
   th{font-family:var(--mincho);color:var(--kei);font-weight:700;font-size:12px;letter-spacing:.06em;white-space:nowrap}
@@ -239,7 +237,6 @@
     .countdown .num{font-size:21px}
     .steps .inner{padding:0}
     .steps button{min-width:62px;font-size:12px;letter-spacing:0}
-    .aside-nav{padding:0 16px 34px;gap:14px}
   }
 </style>
 </head>
@@ -257,8 +254,6 @@
 <main id="main">
   <div id="stage"></div>
 </main>
-
-<div class="aside-nav" id="aside-nav"></div>
 
 <!-- 「AIに相談」。予定を登録するまでは出さず、以降は右のサイドバーで開く。 -->
 <div class="scrim" id="talk-scrim" hidden><div class="drawer" id="talk-mount"></div></div>
@@ -298,10 +293,9 @@ const UID = (() => {
 })();
 const DEV = new URLSearchParams(location.search).get("dev") === "1";
 
-// view: 進行中の一本道（flow）か、そこから寄り道した別ページか。
 // look: 利用者が道のりの帯から過去の段階を見に行ったときだけ入る。
 const state = {
-  event: null, view: "flow", look: null, autoStage: null,
+  event: null, look: null, autoStage: null,
   chatOpen: false, unread: 0,
   stations: ["東京"], intake: null,  // intake は {phase:"form"|"check", draft}
   swapping: null,                    // 「これに変更する」を押した衣装の id
@@ -312,7 +306,6 @@ const EVENT_KIND = { wedding:"結婚式お呼ばれ", seijin:"成人式・卒業
 const RENTAL_STATE = { proposed:"起案中", awaiting_consent:"承認待ち", reserved:"予約確定", picked_up:"受取済み", returning:"返却中", returned:"返却済み", overdue:"延滞中" };
 const PICKUP_KIND = { home_delivery:"自宅へ配送", store:"店舗で受取", locker:"ロッカーで受取" };
 const RETURN_METHOD = { convenience_store:"コンビニから発送", store:"店舗に返す", locker:"ロッカーに返す", pickup_service:"集荷に出す" };
-const MOVIE_STATUS = { draft:"写真あり", consent_required:"写っている方の確認待ち", awaiting_consent:"制作費の承認待ち", rendering:"生成中", completed:"完成" };
 const COLORS = {
   "コーラルピンク":"#f0a08c","アイボリー":"#ece3d0","ラベンダー":"#b4a5d6","スモーキーブルー":"#8aa6c0",
   "テラコッタ":"#c1714b","オリーブ":"#8a8f5c","ロイヤルブルー":"#3f5fb0","ワインレッド":"#8f3a4a","ブラック":"#2a2a30",
@@ -320,7 +313,6 @@ const COLORS = {
 const CONSENT_HEAD = {
   reserve: { title:"この内容で確定しますか", lead:"承認すると、ここではじめてレンタルの予約が入ります。" },
   extend:  { title:"返却期限を延ばしますか", lead:"承認すると、延長料金が発生します。" },
-  movie:   { title:"この構成でつくりますか", lead:"承認すると、映像とBGMの生成が始まります。" },
 };
 
 // 一本道の段階。順序そのものが利用者の動線なので、番号を振る。
@@ -406,12 +398,11 @@ function renderSteps() {
   const here = STEPS.findIndex(s => s.id === stage());
   const reached = STEPS.findIndex(s => s.id === state.autoStage);
   $("steps").innerHTML = STEPS.map((s, i) => {
-    const done = i <= reached && state.view === "flow";
-    return `<button data-step="${s.id}" class="${i === here && state.view === "flow" ? "on" : done ? "done" : ""}"
+    const done = i <= reached;
+    return `<button data-step="${s.id}" class="${i === here ? "on" : done ? "done" : ""}"
       ${done ? "" : "disabled"}><span class="n">${state.look && i === reached ? "いま" : i + 1}</span>${s.label}</button>`;
   }).join("");
   $("steps").querySelectorAll("button[data-step]").forEach(b => b.addEventListener("click", () => {
-    state.view = "flow";
     state.look = b.dataset.step === state.autoStage ? null : b.dataset.step;
     render();
   }));
@@ -747,63 +738,6 @@ function renderReturn(el) {
     refresh(await call(`/events/${ev.event_id}/return/complete`, { method:"POST" })));
 }
 
-// ----------------------------------------------------- 寄り道（ムービー）
-function renderMovie(el) {
-  const ev = state.event;
-  const back = `<p style="margin:0 0 18px"><button class="link" data-back>← 進行中の手配に戻る</button></p>`;
-  if (!ev) { el.innerHTML = back + `<h1>思い出のムービー</h1><p class="lead">式の予定が決まると使えます。</p>`; return; }
-  const m = ev.movie;
-  if (!m) {
-    el.innerHTML = back + `
-      <h1>思い出のムービー</h1>
-      <p class="lead">古い写真を預けると、傷みを補正し、動かして、BGMまで付けた短い映像にします。</p>
-      <button class="btn" id="mv-add">写真を登録する（サンプル3枚）</button>`;
-    $("mv-add").addEventListener("click", addPhotos);
-    bindBack(el); return;
-  }
-  const pending = m.photos.filter(p => p.contains_third_party && !p.consent_confirmed);
-  el.innerHTML = back + `
-    <h1>思い出のムービー</h1>
-    <p class="lead">${esc(MOVIE_STATUS[m.status] ?? m.status)}${m.theme ? ` ・ テーマ「${esc(m.theme)}」` : ""}</p>
-    ${pending.length ? `<div class="warnline">ご本人以外が写っている写真が${pending.length}枚あります。使ってよいか確認してください。</div>` : ""}
-    <table>
-      <tr><th>写真</th><th>説明</th><th>ほかの方</th><th>使ってよいか</th><th>補正</th></tr>
-      ${m.photos.map(p => `<tr>
-        <td><code>${esc(p.image_ref)}</code></td>
-        <td>${esc(p.caption ?? "—")}</td>
-        <td>${p.contains_third_party ? "写っている" : "—"}</td>
-        <td>${p.contains_third_party
-          ? (p.consent_confirmed ? '<span style="color:var(--ok)">確認済み</span>'
-             : `<button class="btn small" data-consent="${esc(p.photo_id)}">使ってよい</button>`)
-          : '<span class="muted">確認不要</span>'}</td>
-        <td class="muted">${p.restored_url ? "済" : "—"}</td>
-      </tr>`).join("")}
-    </table>
-    ${m.scenes.length ? `<table style="margin-top:16px">
-      <tr><th>順</th><th>ナレーション</th><th>秒</th><th>映像</th></tr>
-      ${m.scenes.map(s => `<tr><td class="num">${s.order}</td><td>${esc(s.narration)}</td>
-        <td class="num">${s.duration_seconds}</td>
-        <td>${s.video_url ? `<code>${esc(s.video_url)}</code>` : '<span class="muted">未生成</span>'}</td></tr>`).join("")}
-    </table>` : ""}
-    ${m.status === "completed" ? `<dl class="facts" style="margin-top:16px">
-      <dt>BGM</dt><dd><code>${esc(m.bgm_url)}</code></dd>
-      <dt>表示</dt><dd>${esc(m.watermark)}</dd>
-      <dt>素材の削除予定</dt><dd>${md(m.delete_after)}</dd></dl>` : ""}
-    ${m.status !== "completed" ? `<div class="row" style="margin-top:20px">
-      <input id="mv-theme" value="${esc(m.theme ?? "生い立ち")}" style="padding:7px 11px;border:1px solid var(--line);border-radius:2px;font-family:inherit;width:160px" />
-      <button class="btn" id="mv-propose">この構成で見積もる</button></div>` : ""}`;
-  el.querySelectorAll("button[data-consent]").forEach(b =>
-    b.addEventListener("click", async () => refresh(await call(`/events/${ev.event_id}/movie/photo-consent`, {
-      method:"POST", body: JSON.stringify({ photo_ids:[b.dataset.consent], confirmed:true }) }))));
-  $("mv-propose")?.addEventListener("click", async () => {
-    const res = await call(`/events/${ev.event_id}/movie/proposal`, {
-      method:"POST", body: JSON.stringify({ theme: $("mv-theme").value || "生い立ち" }) });
-    await refresh(res.event);
-    toast("見積もりを出しました。「確認」で承認すると生成が始まります。");
-  });
-  bindBack(el);
-}
-
 // 過去の段階は見に戻れるが、そこから抜ける道が帯の中だけだと気づけない。
 function prependLookback(el) {
   const now = STEPS.find(x => x.id === state.autoStage);
@@ -815,21 +749,6 @@ function prependLookback(el) {
   bar.querySelector("button[data-now]").addEventListener("click", () => {
     state.look = null; state.swapping = null; render();
   });
-}
-
-function bindBack(el) {
-  el.querySelectorAll("button[data-back]").forEach(b =>
-    b.addEventListener("click", () => { state.view = "flow"; state.look = null; render(); }));
-}
-
-// 一本道の外にあるものへの入口。押して初めて開く。
-function renderAsideNav() {
-  // 衣装をえらんでいる最中に別商品の話を出さない。手配が片づいてから見せる。
-  const ready = ["day", "return"].includes(state.autoStage);
-  if (!ready || state.view === "movie") { $("aside-nav").innerHTML = ""; return; }
-  $("aside-nav").innerHTML = `<button class="link" data-go="movie">思い出のムービーをつくる</button>`;
-  $("aside-nav").querySelectorAll("button[data-go]").forEach(b =>
-    b.addEventListener("click", () => { state.view = b.dataset.go; state.look = null; render(); }));
 }
 
 // ------------------------------------------------------------------ 会話
@@ -925,22 +844,13 @@ async function decide(consentId, approved) {
     method:"POST", body: JSON.stringify({ approved }) }));
 }
 
-async function addPhotos() {
-  await refresh(await call(`/events/${state.event.event_id}/movie/photos`, {
-    method:"POST", body: JSON.stringify({ photos: [
-      { image_ref:"sample-photo-1", caption:"出会いのころ" },
-      { image_ref:"sample-photo-2", caption:"友人との旅行", contains_third_party:true },
-      { image_ref:"sample-photo-3", caption:"プロポーズ" },
-    ]}) }));
-}
-
 // ------------------------------------------------------------------ 描画
 async function render() {
   state.autoStage = autoStage();
   if (state.look && STEPS.findIndex(s => s.id === state.look) > STEPS.findIndex(s => s.id === state.autoStage)) {
     state.look = null; // 先の段階は覗けない
   }
-  renderHead(); renderSteps(); renderAsideNav();
+  renderHead(); renderSteps();
 
   const el = $("stage");
   el.className = "stage";
@@ -948,8 +858,6 @@ async function render() {
   placeChat();
 
   const jobs = [renderTalk()];
-  if (state.view === "movie") { renderMovie(el); await Promise.all(jobs); return; }
-
   const s = stage();
   if (s === "intake") renderIntake(el);
   else if (s === "outfit") renderOutfit(el);

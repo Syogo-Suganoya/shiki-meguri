@@ -5,7 +5,6 @@ from datetime import datetime
 import pytest
 
 from app.adapters.ekispert import MockTransitClient
-from app.adapters.gmi import MockMovieStudioClient
 from app.adapters.llm import StubLlmClient
 from app.adapters.chat import ChatChannel
 from app.adapters.rental import MockRentalClient
@@ -39,7 +38,6 @@ def deps(clock: FrozenClock) -> Deps:
         tryon=MockTryOnClient(),
         rental=MockRentalClient(),
         llm=StubLlmClient(),
-        movie_studio=MockMovieStudioClient(settings),
         chat=ChatChannel(repo, clock),
     )
 

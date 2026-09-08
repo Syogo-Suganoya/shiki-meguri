@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 from app.adapters.chat import ChatChannel
 from app.adapters.ekispert import TransitClient, build_transit_client
-from app.adapters.gmi import MovieStudioClient, build_movie_studio_client
 from app.adapters.llm import LlmClient, build_llm_client
 from app.adapters.rental import RentalClient, build_rental_client
 from app.adapters.youcam import TryOnClient, build_tryon_client
@@ -31,7 +30,6 @@ class Deps:
     tryon: TryOnClient
     rental: RentalClient
     llm: LlmClient
-    movie_studio: MovieStudioClient
     chat: ChatChannel
 
 
@@ -48,6 +46,5 @@ def build_deps(settings: Settings | None = None, clock: Clock | None = None) -> 
         tryon=build_tryon_client(settings),
         rental=build_rental_client(settings),
         llm=build_llm_client(settings),
-        movie_studio=build_movie_studio_client(settings),
         chat=ChatChannel(repo, clock),
     )

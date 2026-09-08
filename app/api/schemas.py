@@ -87,28 +87,6 @@ class ConsentDecisionRequest(BaseModel):
     note: str | None = None
 
 
-class MoviePhotoInput(BaseModel):
-    """素材写真。画像そのものではなく一時領域への参照を受け取る（設計書 §7-1）。"""
-
-    image_ref: str
-    caption: str | None = None
-    # 設計書 §11 ガバナンス: 第三者が写るなら利用同意の確認が要る
-    contains_third_party: bool = False
-
-
-class AddMoviePhotosRequest(BaseModel):
-    photos: list[MoviePhotoInput] = Field(min_length=1, max_length=20)
-
-
-class PhotoConsentRequest(BaseModel):
-    photo_ids: list[str] = Field(min_length=1)
-    confirmed: bool = True
-
-
-class ProposeMovieRequest(BaseModel):
-    theme: str = Field(min_length=1, max_length=100)
-
-
 class SeedRequest(BaseModel):
     """デモ用シナリオの投入。"""
 

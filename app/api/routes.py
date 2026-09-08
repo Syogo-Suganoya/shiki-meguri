@@ -13,12 +13,9 @@ from fastapi import APIRouter, HTTPException
 from app.adapters.ekispert import STATION_COORDS
 from app.agents.orchestrator import Orchestrator
 from app.api.schemas import (
-    AddMoviePhotosRequest,
     ChatRequest,
     ConsentDecisionRequest,
     CreateEventRequest,
-    PhotoConsentRequest,
-    ProposeMovieRequest,
     ProposeOutfitsRequest,
     ProposeReservationRequest,
     RegisterUserRequest,
@@ -192,42 +189,6 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
     @router.post("/events/{event_id}/return/complete")
     async def complete_return(event_id: str):
         return await _guard(orchestrator.mark_returned(event_id))
-
-    # -------------------------------------------------------------- ムービー
-
-    @router.post("/events/{event_id}/movie/photos")
-    async def add_movie_photos(event_id: str, req: AddMoviePhotosRequest):
-        """素材写真の登録（設計書 §11）。実体は持たず参照だけ受け取る。"""
-        return await _guard(
-            orchestrator.add_movie_photos(
-                event_id,
-                [(p.image_ref, p.caption, p.contains_third_party) for p in req.photos],
-            )
-        )
-
-    @router.post("/events/{event_id}/movie/photo-consent")
-    async def confirm_photo_consent(event_id: str, req: PhotoConsentRequest):
-        """第三者が写る写真の利用同意チェックリスト。"""
-        return await _guard(
-            orchestrator.confirm_movie_photo_consent(
-                event_id, req.photo_ids, req.confirmed
-            )
-        )
-
-    @router.post("/events/{event_id}/movie/proposal")
-    async def propose_movie(event_id: str, req: ProposeMovieRequest):
-        """構成を組み、制作費を同意ゲートに載せる（生成はまだ始めない）。"""
-        event, consent = await _guard(orchestrator.propose_movie(event_id, req.theme))
-        return {"event": event, "consent": consent}
-
-    @router.get("/events/{event_id}/movie")
-    async def get_movie(event_id: str):
-        event = await deps.repo.get_event(event_id)
-        if event is None:
-            raise HTTPException(404, "イベントが見つかりません")
-        if event.movie is None:
-            raise HTTPException(404, "ムービーの素材がまだありません")
-        return event.movie
 
     # -------------------------------------------------------------- 監査
 
