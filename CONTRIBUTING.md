@@ -110,7 +110,7 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
 |---|---|
 | `GEMINI_MODE` / `GEMINI_API_KEY` | 提案文の生成（慶弔マナー考慮） |
 | `YOUCAM_MODE` / `YOUCAM_API_KEY` | AI Clothes Try-On, Facial Color Tones |
-| `EKISPERT_MODE` / `EKISPERT_MCP_URL` | 駅すぱあと API MCPサーバー |
+| `EKISPERT_MODE` / `EKISPERT_API_KEY` | 駅すぱあと API MCPサーバー（経路探索）。`EKISPERT_MCP_URL` は既定で公式エンドポイント |
 
 `.env` はコミットしない。本番の秘密情報は Secret Manager で管理し、Cloud Run に
 環境変数として注入する（イメージに焼き込まない）。
@@ -153,6 +153,11 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
    **先に事業者側の予約を取り消してから**差し替える（`ArrangeAgent._release_current`）。
    上書きすると、事業者に予約が残ったままアプリ側だけ未予約になる。
    承認待ちの起案が残っている場合も `superseded` にして、承認札を二重に出さない。
+
+10. **経路探索は同じ駅を叩かない**
+    受取場所が会場の最寄りと同じことがある。駅すぱあとは同じ駅に経路を返さず、
+    それでもアクセス数と使用料は加算される。`TransitClient.search` は mock も live も
+    出発と目的地が同じなら探索せずに空の区間を返す。
 
 ## テストの方針
 

@@ -123,7 +123,7 @@ gcloud run deploy "$SERVICE" \
 実APIに切り替えるときは、上のコマンドに以下を足す。
 
 ```bash
-  --set-env-vars="GEMINI_MODE=live,YOUCAM_MODE=live,EKISPERT_MODE=live,EKISPERT_MCP_URL=https://…" \
+  --set-env-vars="GEMINI_MODE=live,YOUCAM_MODE=live,EKISPERT_MODE=live" \
   --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,YOUCAM_API_KEY=youcam-api-key:latest,YOUCAM_SECRET_KEY=youcam-secret:latest,EKISPERT_API_KEY=ekispert-api-key:latest"
 ```
 

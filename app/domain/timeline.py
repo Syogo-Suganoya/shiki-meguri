@@ -194,5 +194,8 @@ def build_timeline(
 
 
 def _leg_detail(leg: TransitLeg) -> str:
+    if leg.from_station == leg.to_station:
+        # 受取場所が会場の最寄りと同じとき。「0分 / 0円 / 乗換0回」は読ませても意味がない。
+        return "同じ駅。歩いて向かう"
     parts = [f"{leg.total_minutes}分", f"{leg.fare_yen}円", f"乗換{leg.transfers}回"]
     return " / ".join(parts)
