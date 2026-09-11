@@ -59,7 +59,6 @@ with Diagram(
     with Cluster("外部API", graph_attr=cluster_attr):
         externals = [
             AIPlatform("Gemini API"),
-            Storage("YouCam API"),
             Storage("駅すぱあと API\nMCPサーバー"),
             Storage("レンタル事業者API\n（モック）"),
         ]

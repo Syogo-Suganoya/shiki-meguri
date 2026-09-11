@@ -62,7 +62,7 @@ docker compose --profile web up
 app/
 ├── domain/         # モデルと逆算タイムライン（外部 I/O なしの純粋ロジック）
 ├── adapters/       # 外部サービス。mock / live を同じインターフェースで差し替え
-├── agents/         # Orchestrator と 5 つの子エージェント、会話の解釈（conversation.py）
+├── agents/         # Orchestrator と 4 つの子エージェント、会話の解釈（conversation.py）
 ├── infra/          # 永続化・監査ログ・時刻
 ├── api/            # API Gateway（Cloud Run: api）+ 画面の配信
 └── agent/          # Orchestrator Agent（Cloud Run: agent）
@@ -109,7 +109,6 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
 | 変数 | 対象 |
 |---|---|
 | `GEMINI_MODE` / `GEMINI_API_KEY` | 提案文の生成（慶弔マナー考慮） |
-| `YOUCAM_MODE` / `YOUCAM_API_KEY` | AI Clothes Try-On, Facial Color Tones |
 | `EKISPERT_MODE` / `EKISPERT_API_KEY` | 駅すぱあと API MCPサーバー（経路探索） |
 
 `.env` はコミットしない。本番の秘密情報は Secret Manager で管理し、Cloud Run に
@@ -127,8 +126,8 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
    「誰の式か」「誰が亡くなったか」を保持するフィールドを追加しない。
    日時・会場・服装区分だけで全機能が成立することをテストで守っている。
 
-3. **画像は結果生成と同時に破棄し、破棄時刻を監査ログへ**（設計書 §7-1）
-   顔・全身画像を保持しない。弔事は生成物の保持期間もさらに短くする。
+3. **画像を受け取らない**（設計書 §7-1）
+   顔写真・全身写真を扱う機能は持たない。保持するフィールドを型に足さない。
 
 4. **判断したら監査ログを残す**（設計書 §7-4）
    エージェントが何かを決めたら `AuditTrail.record` に判断根拠（`basis`）を書く。
@@ -164,7 +163,7 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
 - ドメインの純粋ロジック（`domain/timeline.py`）は入出力を直接検証する
 - エージェントは `tests/conftest.py` の mock 一式と `FrozenClock` で動かす
 - テストの保存先は `memory` ドライバ。エミュレータを立てずに速く回す
-- ガバナンス（同意ゲート・データ最小化・画像破棄）は**振る舞いとしてテストで固定する**
+- ガバナンス（同意ゲート・データ最小化）は**振る舞いとしてテストで固定する**
 - テスト名は日本語で、何を保証しているかがそのまま読めるようにする
 
 ## デプロイ

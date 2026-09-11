@@ -72,14 +72,8 @@ def _outfit_rationale(ctx: dict, mourning: bool) -> str:
 
     if mourning:
         return "式に適した無地の一式です。当日中の手配もできます。"
-    fit = (
-        f"{ctx['season_label']}の肌映りに合う色です"
-        if ctx.get("fits")
-        else f"{ctx['season_label']}には効かせ色になります"
-    )
-    return (
-        f"{fit}。{ctx['event_label']}のドレスコードには沿います。"
-    )
+    # 3件が同じ文になると読む意味が無くなるので、候補ごとに違う点に触れる。
+    return f"{ctx['color']}は{ctx['event_label']}で浮かない色です。{ctx['size']}サイズで用意できます。"
 
 
 def _timeline_summary(ctx: dict, mourning: bool) -> str:

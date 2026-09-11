@@ -30,6 +30,12 @@ async function main() {
     await page.setViewport({ width: WIDTH, height, deviceScaleFactor: 2 });
     // 直前の操作でページが送られていることがある。頭出しを揃える。
     await page.evaluate(() => window.scrollTo(0, 0));
+    // 通知の帯が写り込むと画面の説明と食い違う。消えるまで待つ（最長6秒）。
+    await page
+      .waitForFunction(() => !document.getElementById("toast")?.classList.contains("show"), {
+        timeout: 6000,
+      })
+      .catch(() => {});
     await sleep(400);
     await page.screenshot({ path: `${OUT}/${name}.png` });
     console.log(`撮影: ${name}.png`);

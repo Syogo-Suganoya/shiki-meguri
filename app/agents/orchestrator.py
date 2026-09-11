@@ -15,7 +15,7 @@ from app.agents.arrange import ArrangeAgent
 from app.agents.deps import Deps
 from app.agents.monitor import EXTENSION_MINUTES, ReturnMonitorAgent
 from app.agents.route import RouteAgent
-from app.agents.tryon import TryOnAgent
+from app.agents.outfit import OutfitAgent
 from app.domain.models import (
     ChatMessage,
     ConsentRequest,
@@ -48,7 +48,7 @@ class Orchestrator:
     def __init__(self, deps: Deps) -> None:
         self._d = deps
         self.deps = deps
-        self.tryon = TryOnAgent(deps)
+        self.outfit = OutfitAgent(deps)
         self.arrange = ArrangeAgent(deps)
         self.route = RouteAgent(deps)
         self.monitor = ReturnMonitorAgent(deps)
@@ -134,7 +134,7 @@ class Orchestrator:
                 f"{event.type.label}として、{event.schedule.ceremony_start_at:%-m月%-d日 %H:%M}／"
                 f"{event.schedule.venue_name}で承りました。衣装の候補を出します。",
             )
-            event = await self.propose_outfits(event.event_id, image_ref=f"photo-{uid}")
+            event = await self.propose_outfits(event.event_id)
             await self._say(uid, _candidate_list(event), kind="info", event_id=event.event_id)
             return event
 
@@ -198,8 +198,8 @@ class Orchestrator:
     async def register_user(
         self, uid: str, home_station: str, size: str = "M", **extra
     ) -> UserProfile:
-        # 既存の利用者なら上書きせず差分だけ当てる。パーソナルカラーの解析結果は
-        # 顔画像を破棄したあとの唯一の手掛かりなので、駅の変更で消してはいけない。
+        # 既存の利用者なら上書きせず差分だけ当てる。最寄り駅を変えただけで
+        # 表示名やサイズを巻き添えに消してはいけない。
         current = await self._d.repo.get_user(uid)
         update = {"home_station": home_station, "size": size, **extra}
         user = (
@@ -255,7 +255,7 @@ class Orchestrator:
             f"{event.schedule.venue_name}で承りました。衣装の候補を出します。",
             event_id=event.event_id,
         )
-        event = await self.propose_outfits(event.event_id, image_ref=f"photo-{uid}")
+        event = await self.propose_outfits(event.event_id)
         await self._say(uid, _candidate_list(event), event_id=event.event_id)
         return event
 
@@ -304,13 +304,9 @@ class Orchestrator:
 
     # ------------------------------------------------------------ 委譲
 
-    async def propose_outfits(
-        self, event_id: str, image_ref: str | None = None, limit: int = 3
-    ) -> Event:
+    async def propose_outfits(self, event_id: str, limit: int = 3) -> Event:
         event, user = await self._load(event_id)
-        if image_ref and user.personal_color is None:
-            user = await self.tryon.analyze_personal_color(user, image_ref)
-        return await self.tryon.propose(event, user, image_ref=image_ref, limit=limit)
+        return await self.outfit.propose(event, user, limit=limit)
 
     async def propose_reservation(
         self,
@@ -441,7 +437,7 @@ class Orchestrator:
 
 def _candidate_list(event: Event) -> str:
     lines = [
-        f"{i}. {c.name}（{c.color}／{c.rental_fee_yen:,}円・適合{round(c.match_score * 100)}%）"
+        f"{i}. {c.name}（{c.color}／{c.rental_fee_yen:,}円）"
         for i, c in enumerate(event.candidates, start=1)
     ]
     return "衣装の候補です。番号でお選びください。\n" + "\n".join(lines)

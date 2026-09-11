@@ -32,7 +32,6 @@ class AuditTrail:
         basis: str,
         event_id: str | None = None,
         consent_ref: str | None = None,
-        image_destroyed_at: datetime | None = None,
         payload: dict | None = None,
     ) -> AuditLog:
         log = AuditLog(
@@ -43,7 +42,6 @@ class AuditTrail:
             action=action,
             basis=basis,
             consent_ref=consent_ref,
-            image_destroyed_at=image_destroyed_at,
             payload=payload or {},
         )
         await self._repo.append_audit(log)

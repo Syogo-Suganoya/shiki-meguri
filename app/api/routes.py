@@ -113,13 +113,11 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
             raise HTTPException(404, "イベントが見つかりません")
         return event
 
-    # -------------------------------------------------------------- 試着
+    # -------------------------------------------------------------- 衣装
 
     @router.post("/events/{event_id}/outfits")
     async def propose_outfits(event_id: str, req: ProposeOutfitsRequest):
-        return await _guard(
-            orchestrator.propose_outfits(event_id, req.image_ref, req.limit)
-        )
+        return await _guard(orchestrator.propose_outfits(event_id, req.limit))
 
     # -------------------------------------------------------------- 手配
 
@@ -248,9 +246,7 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
             venue_station=venue_station,
             basis="デモシード",
         )
-        event = await orchestrator.propose_outfits(
-            event.event_id, image_ref=f"demo-photo-{req.uid}"
-        )
+        event = await orchestrator.propose_outfits(event.event_id)
         return event
 
     return router

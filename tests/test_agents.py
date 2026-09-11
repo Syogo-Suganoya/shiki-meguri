@@ -31,7 +31,7 @@ async def _prepare(orchestrator: Orchestrator, event_type: EventType = EventType
         venue_name="ベイサイド迎賓館",
         venue_station="品川",
     )
-    return await orchestrator.propose_outfits(event.event_id, image_ref="photo-u1")
+    return await orchestrator.propose_outfits(event.event_id)
 
 
 # ---------------------------------------------------------------- シーン判定
@@ -52,33 +52,31 @@ def test_シーン判定(orchestrator: Orchestrator, text: str, expected: EventT
     assert basis
 
 
-# ---------------------------------------------------------------- 試着
+# ---------------------------------------------------------------- 衣装
 
-
-async def test_パーソナルカラーはスコアのみ保存し画像は破棄する(
-    orchestrator: Orchestrator, deps: Deps
-):
+async def test_候補は費用の安い順に並ぶ(orchestrator: Orchestrator):
     event = await _prepare(orchestrator)
-
-    user = await deps.repo.get_user("u1")
-    assert user is not None and user.personal_color is not None
-    assert user.personal_color.source_image_destroyed_at is not None
-    assert set(user.personal_color.scores) == {"spring", "summer", "autumn", "winter"}
-
-    logs = await deps.audit.list()
-    analyze = next(log for log in logs if log.action == "analyze_personal_color")
-    assert analyze.image_destroyed_at is not None
-    assert analyze.payload["stored"] == "scores_only"
 
     assert event.status is EventStatus.OUTFIT_PROPOSED
     assert len(event.candidates) == 3
-    assert all(c.tryon_image_url for c in event.candidates)
+    fees = [c.rental_fee_yen for c in event.candidates]
+    assert fees == sorted(fees)
+    assert all(c.rationale for c in event.candidates)
 
 
-async def test_パーソナルカラーに合う候補が上位に来る(orchestrator: Orchestrator, deps: Deps):
+async def test_顔写真を扱うフィールドを持たない(orchestrator: Orchestrator, deps: Deps):
+    """YouCam を外したので、画像の参照も破棄時刻も型に存在しない。"""
+
     event = await _prepare(orchestrator)
-    scores = [c.match_score for c in event.candidates]
-    assert scores == sorted(scores, reverse=True)
+    candidate = event.candidates[0].model_dump()
+    assert "tryon_image_url" not in candidate
+    assert "image_destroyed_at" not in candidate
+
+    user = await deps.repo.get_user("u1")
+    assert user is not None and "personal_color" not in user.model_dump()
+
+    logs = await deps.audit.list()
+    assert all("image_destroyed_at" not in log.model_dump() for log in logs)
 
 
 # ---------------------------------------------------------------- 同意ゲート
@@ -249,17 +247,15 @@ async def test_慶弔の当事者情報を保持するフィールドがない(o
         assert forbidden not in fields
 
 
-async def test_駅を変えてもパーソナルカラーの解析結果は消えない(orchestrator):
-    """顔画像は破棄済みで、残っているのは解析結果だけ。上書き登録で失ってはいけない。"""
+async def test_駅を変えても表示名は消えない(orchestrator):
+    """最寄り駅の変更は上書き登録で入る。他の項目を巻き添えで失ってはいけない。"""
 
-    user = await orchestrator.register_user("u-keep", "東京")
-    user = await orchestrator.tryon.analyze_personal_color(user, "photo-u-keep")
-    assert user.personal_color is not None
+    await orchestrator.register_user("u-keep", "東京", display_name="すがのや")
 
     updated = await orchestrator.register_user("u-keep", "吉祥寺", size="L")
     assert updated.home_station == "吉祥寺"
     assert updated.size == "L"
-    assert updated.personal_color == user.personal_color
+    assert updated.display_name == "すがのや"
 
 
 # ------------------------------------------------------------ 手配のやり直し

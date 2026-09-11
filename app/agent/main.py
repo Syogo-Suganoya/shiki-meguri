@@ -1,6 +1,6 @@
 """Orchestrator Agent サービス（Cloud Run: agent）。
 
-エージェントの権威。Gemini・YouCam・駅すぱあと MCP への接続を担い、
+エージェントの権威。Gemini・駅すぱあと MCP への接続を担い、
 Cloud Scheduler からの `/tasks/sweep` もここで受ける。
 """
 
@@ -31,7 +31,6 @@ async def health() -> dict:
         "service": "agent",
         "modes": {
             "gemini": settings.gemini_mode,
-            "youcam": settings.youcam_mode,
             "ekispert": settings.ekispert_mode,
             "rental": settings.rental_mode,
             "db": settings.db_driver,

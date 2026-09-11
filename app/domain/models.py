@@ -85,34 +85,6 @@ DEFAULT_CATEGORY: dict[EventType, OutfitCategory] = {
 # ---------------------------------------------------------------- 利用者
 
 
-class PersonalColor(str, Enum):
-    SPRING = "spring"
-    SUMMER = "summer"
-    AUTUMN = "autumn"
-    WINTER = "winter"
-
-    @property
-    def label(self) -> str:
-        return {
-            PersonalColor.SPRING: "イエベ春",
-            PersonalColor.SUMMER: "ブルベ夏",
-            PersonalColor.AUTUMN: "イエベ秋",
-            PersonalColor.WINTER: "ブルベ冬",
-        }[self]
-
-
-class PersonalColorResult(BaseModel):
-    """YouCam Facial Color Tones の結果。
-
-    設計書 §7-1 に従い、解析元の顔画像は保持せずスコアのみを残す。
-    """
-
-    season: PersonalColor
-    scores: dict[str, float] = Field(default_factory=dict)
-    analyzed_at: datetime
-    source_image_destroyed_at: datetime | None = None
-
-
 class UserProfile(BaseModel):
     """users/{uid}.profile — 自宅住所は保持せず最寄り駅まで。"""
 
@@ -120,7 +92,6 @@ class UserProfile(BaseModel):
     display_name: str = ""
     home_station: str
     size: str = "M"
-    personal_color: PersonalColorResult | None = None
 
 
 class ChatMessage(BaseModel):
@@ -152,7 +123,7 @@ class RentalState(str, Enum):
 
 
 class OutfitCandidate(BaseModel):
-    """試着エージェントが提示する候補。"""
+    """衣装エージェントが提示する候補。"""
 
     outfit_id: str
     name: str
@@ -161,10 +132,7 @@ class OutfitCandidate(BaseModel):
     size: str
     provider: str
     rental_fee_yen: int
-    match_score: float = 0.0
     rationale: str | None = None
-    tryon_image_url: str | None = None
-    image_destroyed_at: datetime | None = None
 
 
 class Outfit(BaseModel):
@@ -400,5 +368,4 @@ class AuditLog(BaseModel):
     action: str
     basis: str
     consent_ref: str | None = None
-    image_destroyed_at: datetime | None = None
     payload: dict = Field(default_factory=dict)

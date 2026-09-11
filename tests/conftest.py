@@ -8,7 +8,6 @@ from app.adapters.ekispert import MockTransitClient
 from app.adapters.llm import StubLlmClient
 from app.adapters.chat import ChatChannel
 from app.adapters.rental import MockRentalClient
-from app.adapters.youcam import MockTryOnClient
 from app.agents.deps import Deps
 from app.agents.orchestrator import Orchestrator
 from app.config import Settings
@@ -35,7 +34,6 @@ def deps(clock: FrozenClock) -> Deps:
         repo=repo,
         audit=AuditTrail(repo, clock),
         transit=MockTransitClient(),
-        tryon=MockTryOnClient(),
         rental=MockRentalClient(),
         llm=StubLlmClient(),
         chat=ChatChannel(repo, clock),

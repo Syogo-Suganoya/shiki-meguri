@@ -69,8 +69,6 @@ class StartIntakeRequest(BaseModel):
 
 
 class ProposeOutfitsRequest(BaseModel):
-    # 画像そのものではなく、アップロード済み一時領域への参照だけを受け取る。
-    image_ref: str | None = None
     limit: int = Field(default=3, ge=1, le=5)
 
 

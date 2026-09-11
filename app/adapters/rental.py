@@ -16,22 +16,8 @@ from app.domain.models import (
     EventType,
     OutfitCandidate,
     OutfitCategory,
-    PersonalColor,
     PickupOption,
 )
-
-# 色 → 似合うパーソナルカラー。試着エージェントのスコアリングに使う。
-COLOR_SEASONS: dict[str, set[PersonalColor]] = {
-    "コーラルピンク": {PersonalColor.SPRING},
-    "アイボリー": {PersonalColor.SPRING, PersonalColor.AUTUMN},
-    "ラベンダー": {PersonalColor.SUMMER, PersonalColor.WINTER},
-    "スモーキーブルー": {PersonalColor.SUMMER},
-    "テラコッタ": {PersonalColor.AUTUMN},
-    "オリーブ": {PersonalColor.AUTUMN},
-    "ロイヤルブルー": {PersonalColor.WINTER},
-    "ワインレッド": {PersonalColor.WINTER, PersonalColor.AUTUMN},
-    "ブラック": set(),
-}
 
 _CATALOG: dict[OutfitCategory, list[tuple[str, str, int, str]]] = {
     # (商品名, 色, レンタル料, 事業者)

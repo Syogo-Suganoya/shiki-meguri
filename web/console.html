@@ -541,9 +541,6 @@ function renderOutfit(el) {
   // 受け取ったあとは手元に衣装があるので、もう変えられない。
   const locked = ["picked_up", "returning", "returned", "overdue"].includes(outfit?.state);
 
-  // 「適合 30%」のような生の数字は意味が伝わらない。言葉にする。
-  const fitLabel = (s) => s >= 0.9 ? "肌映りが良い" : s >= 0.6 ? "式の定番" : "効かせ色";
-
   const action = (c, i) => {
     if (c.outfit_id === chosen) {
       return reserved
@@ -568,17 +565,16 @@ function renderOutfit(el) {
 
   el.innerHTML = `
     <h1>衣装をえらぶ</h1>
-    <p class="lead">${esc(EVENT_KIND[ev.type])}の装いとして外れがなく、肌映りに合うものから順に並べています。</p>
+    <p class="lead">${esc(EVENT_KIND[ev.type])}の装いとして外れのないものを、費用の安い順に並べています。</p>
     <div class="cards">` + list.map((c, i) => `
       <div class="card ${c.outfit_id === chosen ? "on" : ""}">
-        <div class="swatch" style="background:${COLORS[c.color] ?? "#ddd"}">試着画像</div>
+        <div class="swatch" style="background:${COLORS[c.color] ?? "#ddd"}">色の見本</div>
         <div class="nm">${esc(c.name)}</div>
         <div class="muted" style="font-size:12px">${esc(c.color)} / ${esc(c.size)} / ${esc(c.provider)}</div>
-        <div class="muted" style="font-size:12px">${fitLabel(c.match_score)}</div>
         <div class="why">${esc(c.rationale ?? "")}</div>
         <div class="row" style="justify-content:space-between;margin-top:auto">
           <span class="fee">${yen(c.rental_fee_yen)}</span>
-          ${i === 0 ? '<span class="pill rec">おすすめ</span>' : ""}
+          ${i === 0 ? '<span class="pill rec">いちばん安い</span>' : ""}
         </div>
         ${action(c, i)}
       </div>`).join("") + `</div>

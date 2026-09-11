@@ -14,7 +14,7 @@ MVP は **1 サービス構成**でデプロイする。`api` コンテナが `A
 ```
 Cloud Scheduler ──POST /api/tasks/sweep──▶ Cloud Run（api）──▶ Firestore
                                                     │           Cloud Logging
-                                                    └──▶ Gemini / YouCam / 駅すぱあと
+                                                    └──▶ Gemini / 駅すぱあと
                                               Secret Manager（APIキー）
 ```
 
@@ -82,8 +82,6 @@ gcloud artifacts repositories create "$REPO" \
 
 ```bash
 printf '%s' "$GEMINI_API_KEY"  | gcloud secrets create gemini-api-key  --data-file=-
-printf '%s' "$YOUCAM_API_KEY"  | gcloud secrets create youcam-api-key  --data-file=-
-printf '%s' "$YOUCAM_SECRET"   | gcloud secrets create youcam-secret   --data-file=-
 printf '%s' "$EKISPERT_KEY"    | gcloud secrets create ekispert-api-key --data-file=-
 ```
 
@@ -93,7 +91,7 @@ Cloud Run のサービスアカウントに読み取り権限を与える。
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
-for s in gemini-api-key youcam-api-key youcam-secret ekispert-api-key; do
+for s in gemini-api-key ekispert-api-key; do
   gcloud secrets add-iam-policy-binding "$s" \
     --member="serviceAccount:${RUNTIME_SA}" \
     --role=roles/secretmanager.secretAccessor
@@ -123,8 +121,8 @@ gcloud run deploy "$SERVICE" \
 実APIに切り替えるときは、上のコマンドに以下を足す。
 
 ```bash
-  --set-env-vars="GEMINI_MODE=live,YOUCAM_MODE=live,EKISPERT_MODE=live" \
-  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,YOUCAM_API_KEY=youcam-api-key:latest,YOUCAM_SECRET_KEY=youcam-secret:latest,EKISPERT_API_KEY=ekispert-api-key:latest"
+  --set-env-vars="GEMINI_MODE=live,EKISPERT_MODE=live" \
+  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,EKISPERT_API_KEY=ekispert-api-key:latest"
 ```
 
 デプロイ後の URL を控える。
@@ -207,7 +205,7 @@ GitHub と繋ぐか、Cloud Shell を使う。以下は Cloud Shell を使う前
 
 1. ナビゲーションメニュー → **Secret Manager** → **シークレットを作成**
 2. 名前 `gemini-api-key`、シークレットの値にキーを貼って **シークレットを作成**
-3. YouCam・駅すぱあと分も同様に作る
+3. 駅すぱあと分も同様に作る
 
 権限は、後の Cloud Run のデプロイ画面でシークレットを参照したときに
 「権限を付与しますか」と聞かれるので、その場で許可すれば足りる。
@@ -390,9 +388,9 @@ CD に含めていない（作り直しの事故を避けるため、インフ�
   開発では compose がこの変数でエミュレータを指している。本番で設定されていると
   クライアントがエミュレータを探しに行き、本物の Firestore に繋がらない。
 
-- **試着画像は保存しない**
-  Cloud Storage のバケットは要らない。画像は結果生成と同時に破棄する設計のため、
-  永続化先を用意すると設計書 §7-1 に反する。
+- **画像の保存先は用意しない**
+  Cloud Storage のバケットは要らない。顔写真・全身写真を受け取らない設計なので、
+  永続化先を作ると設計書 §7-1 に反する。
 
 - **秘密情報をイメージに焼かない**
   `.env` はコミットもデプロイもしない。キーは必ず Secret Manager 経由で注入する。
