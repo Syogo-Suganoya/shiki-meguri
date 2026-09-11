@@ -73,7 +73,7 @@ def _server(sent: list[dict], *, sse: bool = False) -> httpx.MockTransport:
 
 
 def _client(sent: list[dict], *, sse: bool = False) -> EkispertMcpClient:
-    client = EkispertMcpClient(URL, "test-key")
+    client = EkispertMcpClient("test-key", URL)
     client._client = httpx.AsyncClient(transport=_server(sent, sse=sse))
     return client
 
@@ -158,7 +158,7 @@ async def test_エラー応答は例外にする():
             },
         )
 
-    client = EkispertMcpClient(URL, "test-key")
+    client = EkispertMcpClient("test-key", URL)
     client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     with pytest.raises(RuntimeError, match="viaList"):
         await client.search("東京", "品川")
@@ -194,7 +194,7 @@ async def test_経路が無いときは読める例外にする():
         )
         return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": result})
 
-    client = EkispertMcpClient(URL, "test-key")
+    client = EkispertMcpClient("test-key", URL)
     client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     with pytest.raises(LookupError, match="経路が見つかりません"):
         await client.search("東京", "嵐山")

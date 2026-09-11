@@ -115,13 +115,15 @@ class EkispertMcpClient(TransitClient):
     `domain/timeline.py` が所要時間から自前で組むので、これで足りる。
     """
 
+    #: 公式のエンドポイント。環境ごとに変わるものではないので設定にしない。
+    URL = "https://api-mcp.ekispert.jp/mcp"
     #: 認証はこのヘッダ。Authorization ヘッダではない。
     KEY_HEADER = "ekispert-api-access-key"
     TOOL = "ekispert_api_search_routes"
     PROTOCOL_VERSION = "2025-06-18"
 
-    def __init__(self, base_url: str, api_key: str, timeout: float = 20.0) -> None:
-        self._url = base_url
+    def __init__(self, api_key: str, url: str | None = None, timeout: float = 20.0) -> None:
+        self._url = url or self.URL
         self._headers = {
             self.KEY_HEADER: api_key,
             "ekispert-api-response-format": "json",
@@ -295,5 +297,5 @@ def _lines_between(a: str, b: str) -> list[str]:
 
 def build_transit_client(settings: Settings) -> TransitClient:
     if settings.ekispert_mode == "live" and settings.ekispert_api_key:
-        return EkispertMcpClient(settings.ekispert_mcp_url, settings.ekispert_api_key)
+        return EkispertMcpClient(settings.ekispert_api_key)
     return MockTransitClient()

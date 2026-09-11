@@ -18,8 +18,9 @@ async def client():
         yield c
 
 
-async def test_healthz(client: httpx.AsyncClient):
-    res = await client.get("/healthz")
+async def test_疎通確認の口が生きている(client: httpx.AsyncClient):
+    # Cloud Run では /healthz が Google Front End に横取りされるので使わない。
+    res = await client.get("/health")
     assert res.status_code == 200
     assert res.json()["service"] == "api"
 

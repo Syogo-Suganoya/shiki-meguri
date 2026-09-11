@@ -27,7 +27,6 @@ services:
       YOUCAM_API_KEY: ${YOUCAM_API_KEY:-}
       YOUCAM_SECRET_KEY: ${YOUCAM_SECRET_KEY:-}
       EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
-      EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
       # ガバナンス（設計書 §7）。0 = エージェントは 1 円も自律確定できない。
       AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-0}
     volumes:
@@ -38,7 +37,7 @@ services:
       - firestore
     command: sh -c "uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --reload"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -67,7 +66,6 @@ services:
       YOUCAM_API_KEY: ${YOUCAM_API_KEY:-}
       YOUCAM_SECRET_KEY: ${YOUCAM_SECRET_KEY:-}
       EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
-      EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
       AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-0}
     volumes:
       - ./app:/srv/app

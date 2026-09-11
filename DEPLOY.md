@@ -131,7 +131,7 @@ gcloud run deploy "$SERVICE" \
 
 ```bash
 SERVICE_URL=$(gcloud run services describe "$SERVICE" --region="$REGION" --format='value(status.url)')
-curl -s "$SERVICE_URL/healthz"
+curl -s "$SERVICE_URL/health"
 ```
 
 ## 7. Firestore の TTL ポリシー
@@ -165,7 +165,7 @@ gcloud scheduler jobs create http shiki-sweep \
 ## 9. 動作確認
 
 ```bash
-curl -s "$SERVICE_URL/healthz"
+curl -s "$SERVICE_URL/health"
 curl -s -X POST "$SERVICE_URL/api/chat" \
   -H 'content-type: application/json' \
   -d '{"uid":"smoke","text":"明日16時、品川の結婚式にお呼ばれ"}'
@@ -365,7 +365,7 @@ Settings → Secrets and variables → **Actions** → **Variables** に登録�
 2. ローカルと同じコンテナでテストを実行。落ちたらここで止まる
 3. Cloud Build でイメージをビルドし、コミットSHAをタグにして push
 4. Cloud Run へデプロイ
-5. `/healthz` を叩いて疎通確認
+5. `/health` を叩いて疎通確認
 
 初回だけは**パターン A か B で一度デプロイしておく**とよい。Firestore・
 Artifact Registry・Secret Manager・TTL ポリシー・Cloud Scheduler の作成は

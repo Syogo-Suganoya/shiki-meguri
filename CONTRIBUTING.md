@@ -110,7 +110,7 @@ api サービスでは `/api` 配下、agent サービスでは直下に生え�
 |---|---|
 | `GEMINI_MODE` / `GEMINI_API_KEY` | 提案文の生成（慶弔マナー考慮） |
 | `YOUCAM_MODE` / `YOUCAM_API_KEY` | AI Clothes Try-On, Facial Color Tones |
-| `EKISPERT_MODE` / `EKISPERT_API_KEY` | 駅すぱあと API MCPサーバー（経路探索）。`EKISPERT_MCP_URL` は既定で公式エンドポイント |
+| `EKISPERT_MODE` / `EKISPERT_API_KEY` | 駅すぱあと API MCPサーバー（経路探索） |
 
 `.env` はコミットしない。本番の秘密情報は Secret Manager で管理し、Cloud Run に
 環境変数として注入する（イメージに焼き込まない）。

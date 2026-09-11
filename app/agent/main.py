@@ -24,8 +24,8 @@ app = FastAPI(title="シキめぐり agent", version="0.1.0")
 app.include_router(build_router(orchestrator))
 
 
-@app.get("/healthz")
-async def healthz() -> dict:
+@app.get("/health")
+async def health() -> dict:
     return {
         "status": "ok",
         "service": "agent",

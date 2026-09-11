@@ -33,7 +33,6 @@ class Settings(BaseSettings):
     youcam_api_key: str = ""
     youcam_secret_key: str = ""
     ekispert_api_key: str = ""
-    ekispert_mcp_url: str = "https://api-mcp.ekispert.jp/mcp"
 
     # API から agent サービスを呼ぶ経路。inproc はローカル/テスト用。
     agent_transport: Literal["inproc", "http"] = "inproc"

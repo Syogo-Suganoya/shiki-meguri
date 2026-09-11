@@ -55,8 +55,10 @@ else:
         )
 
 
-@app.get("/healthz")
-async def healthz() -> dict:
+# Cloud Run では `/healthz` が Google Front End に横取りされ、コンテナまで届かない
+# （GFE が自前の 404 を返す）。疎通確認に使う口なので、取られない名前にする。
+@app.get("/health")
+async def health() -> dict:
     return {"status": "ok", "service": "api", "transport": settings.agent_transport}
 
 
