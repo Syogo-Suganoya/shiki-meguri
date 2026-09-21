@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
@@ -27,11 +28,23 @@ def to_jst(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=JST) if value.tzinfo is None else value.astimezone(JST)
 
 
+def plain_text(value: str) -> str:
+    """自由入力の文字列から改行などの制御文字を落とす。
+
+    会場名はチャットの文面や Gemini への材料に入るので、行を分けて
+    別の指示に見せかける書き方を入口で潰しておく。
+    """
+
+    return re.sub(r"[\x00-\x1f\x7f]", " ", value).strip()
+
+
 class RegisterUserRequest(BaseModel):
     uid: str
     home_station: str
     size: str = "M"
-    display_name: str = ""
+    display_name: str = Field(default="", max_length=30)
+
+    _plain = field_validator("display_name")(plain_text)
 
 
 class ChatRequest(BaseModel):
@@ -44,7 +57,7 @@ class ChatRequest(BaseModel):
 class CreateEventRequest(BaseModel):
     uid: str
     ceremony_start_at: datetime
-    venue_name: str
+    venue_name: str = Field(max_length=40)
     venue_station: str
     ceremony_end_at: datetime | None = None
     # type を省略した場合は message からシーン判定する。
@@ -52,6 +65,7 @@ class CreateEventRequest(BaseModel):
     message: str | None = None
 
     _jst = field_validator("ceremony_start_at", "ceremony_end_at")(to_jst)
+    _plain = field_validator("venue_name")(plain_text)
 
 
 class StartIntakeRequest(BaseModel):
@@ -61,11 +75,12 @@ class StartIntakeRequest(BaseModel):
     type: EventType
     ceremony_start_at: datetime
     venue_station: str
-    venue_name: str = ""
+    venue_name: str = Field(default="", max_length=40)
     home_station: str
     size: str = "M"
 
     _jst = field_validator("ceremony_start_at")(to_jst)
+    _plain = field_validator("venue_name")(plain_text)
 
 
 class ProposeOutfitsRequest(BaseModel):

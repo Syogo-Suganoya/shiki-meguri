@@ -59,7 +59,21 @@ else:
 # （GFE が自前の 404 を返す）。疎通確認に使う口なので、取られない名前にする。
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "service": "api", "transport": settings.agent_transport}
+    return {
+        "status": "ok",
+        "service": "api",
+        "transport": settings.agent_transport,
+        # 実際に使われる接続先。live 指定でもキーが無ければ mock に落ちるので、そこまで見て返す。
+        # デプロイ後の疎通確認で、本番が mock のまま出ていないかを検出するのに使う。
+        "modes": {
+            "gemini": _effective(settings.gemini_mode, settings.gemini_api_key),
+            "ekispert": _effective(settings.ekispert_mode, settings.ekispert_api_key),
+        },
+    }
+
+
+def _effective(mode: str, key: str) -> str:
+    return "live" if mode == "live" and key else "mock"
 
 
 @app.get("/")

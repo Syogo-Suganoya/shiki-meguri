@@ -351,10 +351,11 @@ class ArrangeAgent:
     async def _notify(
         self, event: Event, user: UserProfile, consent: ConsentRequest
     ) -> None:
-        text = await self._d.llm.compose(
-            purpose="consent_summary",
-            context={"summary": consent.summary, "amount": consent.amount_yen},
-            mourning=event.type.is_mourning,
+        # 承認を求める文面は LLM に書かせない。利用者はこの文を読んで承認するので、
+        # 金額の書き違いや、入力に紛れた指示で文面が変わる余地を残さない。
+        text = (
+            f"{consent.summary} 合計{consent.amount_yen:,}円です。"
+            "内容をご確認のうえ、承認をお願いします（承認まで確定しません）。"
         )
         await self._d.chat.say(
             event.uid, text, kind="consent", event_id=event.event_id

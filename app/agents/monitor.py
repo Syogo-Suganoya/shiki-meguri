@@ -43,7 +43,8 @@ class ReturnMonitorAgent:
         message = await self._d.llm.compose(
             purpose="return_reminder",
             context={
-                "remaining": max(remaining, 0),
+                # 単位を付けて渡す。数字だけだと Gemini が「45日」のように単位を補ってしまう。
+                "remaining": f"{max(remaining, 0)}分",
                 "method_label": plan.method.label,
                 "place": plan.place or "返却窓口",
             },

@@ -12,7 +12,7 @@ from datetime import datetime
 import httpx
 import pytest
 
-from app.adapters.ekispert import EkispertMcpClient
+from app.adapters.ekispert import EKISPERT_CODES, STATION_COORDS, EkispertMcpClient
 from app.config import Settings
 from app.infra.clock import JST
 
@@ -105,7 +105,8 @@ async def test_認証は専用ヘッダで送り_出発と目的地はコロン�
     assert call["headers"]["ekispert-api-access-key"] == "test-key"
     assert "authorization" not in call["headers"]
     assert call["body"]["params"]["name"] == "ekispert_api_search_routes"
-    assert call["body"]["params"]["arguments"]["viaList"] == "東京:品川"
+    # 同名の駅と取り違えないよう、駅名ではなく駅コードで渡す。
+    assert call["body"]["params"]["arguments"]["viaList"] == "22828:22709"
 
 
 @pytest.mark.asyncio
@@ -198,6 +199,90 @@ async def test_経路が無いときは読める例外にする():
     client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     with pytest.raises(LookupError, match="経路が見つかりません"):
         await client.search("東京", "嵐山")
+
+
+@pytest.mark.asyncio
+async def test_特急料金も運賃に足す():
+    """新幹線の経路は運賃（620円）だけでなく特急料金（1,090円）もかかる。実データの値。"""
+
+    shinkansen = json.loads(json.dumps(COURSE))
+    shinkansen["ResultSet"]["Course"]["Price"] = [
+        {"kind": "ChargeSummary", "Oneway": "1090"},
+        {"kind": "Charge", "Oneway": "2810", "Name": "指定席"},
+        {"kind": "Charge", "Oneway": "1090", "Name": "自由席"},
+        {"kind": "Fare", "Oneway": "620"},
+        {"kind": "FareSummary", "Oneway": "620"},
+        {"kind": "Teiki1Summary", "Oneway": "57370"},
+    ]
+    client, _ = _answer(json.dumps(shinkansen))
+    leg = await client.search("東京", "大宮")
+    assert leg.fare_yen == 1710
+
+
+def test_選べる駅はすべて駅コードを持つ():
+    """一覧に駅を足したら、コードも足さないと名前で探索されて取り違える。"""
+
+    assert set(STATION_COORDS) <= set(EKISPERT_CODES)
+
+
+@pytest.mark.asyncio
+async def test_同名の駅がある駅も一つに決まる():
+    sent: list[dict] = []
+    await _client(sent).search("大宮", "嵐山")
+
+    via = sent[-1]["body"]["params"]["arguments"]["viaList"]
+    assert via == "21987:25591"  # 大宮(埼玉県) と 嵐山(京福線)
+
+
+@pytest.mark.asyncio
+async def test_一覧にない駅は名前のまま渡す():
+    sent: list[dict] = []
+    await _client(sent).search("東京", "高円寺")
+    assert sent[-1]["body"]["params"]["arguments"]["viaList"] == "22828:高円寺"
+
+
+def _answer(tool_text: str, *, session: str | None = None):
+    """initialize には応じ、tools/call には決めた本文を返すサーバー。"""
+
+    sent: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append({"headers": dict(request.headers), "body": body})
+        if body["method"] == "notifications/initialized":
+            return httpx.Response(202)
+        headers = {"mcp-session-id": session} if session and body["method"] == "initialize" else {}
+        result = {} if body["method"] == "initialize" else {"content": [{"type": "text", "text": tool_text}]}
+        return httpx.Response(200, headers=headers, json={"jsonrpc": "2.0", "id": body["id"], "result": result})
+
+    client = EkispertMcpClient(" test-key\n", URL)
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return client, sent
+
+
+@pytest.mark.asyncio
+async def test_駅すぱあとのエラーは本文の内容で伝える():
+    """API 側のエラーは isError ではなく {status, message} の本文で返る。"""
+
+    client, _ = _answer(json.dumps({"status": 400, "message": "駅が見つかりません。(E101)"}))
+    with pytest.raises(RuntimeError, match="駅が見つかりません"):
+        await client.search("東京", "品川")
+
+
+@pytest.mark.asyncio
+async def test_キーの前後の空白と改行は落として送る():
+    client, sent = _answer(json.dumps(COURSE))
+    await client.search("東京", "品川")
+    assert sent[-1]["headers"]["ekispert-api-access-key"] == "test-key"
+
+
+@pytest.mark.asyncio
+async def test_セッションが発行されたら以後の要求に付ける():
+    client, sent = _answer(json.dumps(COURSE), session="sess-123")
+    await client.search("東京", "品川")
+
+    assert "mcp-session-id" not in sent[0]["headers"]  # initialize の時点ではまだ無い
+    assert sent[-1]["headers"]["mcp-session-id"] == "sess-123"
 
 
 def test_キーが無いうちは実接続しない():

@@ -23,6 +23,8 @@ async def test_疎通確認の口が生きている(client: httpx.AsyncClient):
     res = await client.get("/health")
     assert res.status_code == 200
     assert res.json()["service"] == "api"
+    # テストはキーを持たないので mock。本番の疎通確認はここが live であることを見る。
+    assert res.json()["modes"] == {"gemini": "mock", "ekispert": "mock"}
 
 
 async def test_デモ動線が最後まで通る(client: httpx.AsyncClient):

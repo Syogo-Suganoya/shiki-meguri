@@ -63,6 +63,32 @@ LINES_BY_HUB: dict[str, list[str]] = {
 }
 
 
+# 駅すぱあとの駅コード。駅名のまま渡すと、同名の駅がある場合に一つに決まらない
+# （「大宮」は埼玉と京都、「嵐山」は阪急と京福）。コードなら取り違えが起きない。
+# 値は ekispert_api_get_stations で引いたもの。路線は LINES_BY_HUB の想定に合わせてある。
+EKISPERT_CODES: dict[str, str] = {
+    "東京": "22828",
+    "品川": "22709",
+    "渋谷": "22715",
+    "新宿": "22741",
+    "池袋": "22513",
+    "上野": "22528",
+    "浅草": "22495",
+    "銀座": "22641",
+    "恵比寿": "22548",
+    "目黒": "23018",
+    "有楽町": "23036",
+    "赤坂見附": "22486",
+    "吉祥寺": "22637",
+    "横浜": "23368",
+    "大宮": "21987",  # 大宮(埼玉県)
+    "千葉": "22361",
+    "京都": "25647",
+    "祇園四条": "25680",
+    "嵐山": "25591",  # 嵐山(京福線)
+}
+
+
 class TransitClient(abc.ABC):
     @abc.abstractmethod
     async def search(
@@ -125,7 +151,8 @@ class EkispertMcpClient(TransitClient):
     def __init__(self, api_key: str, url: str | None = None, timeout: float = 20.0) -> None:
         self._url = url or self.URL
         self._headers = {
-            self.KEY_HEADER: api_key,
+            # 前後の空白や改行が混ざると認証に失敗する（公式のトラブルシューティングより）。
+            self.KEY_HEADER: api_key.strip(),
             "ekispert-api-response-format": "json",
             # Streamable HTTP は JSON でも SSE でも返ってくる。両方受ける。
             "Accept": "application/json, text/event-stream",
@@ -134,6 +161,7 @@ class EkispertMcpClient(TransitClient):
         self._client = httpx.AsyncClient(timeout=timeout)
         self._ready: asyncio.Lock = asyncio.Lock()
         self._initialized = False
+        self._session_id: str | None = None
         self._rpc_id = 0
 
     async def search(
@@ -151,8 +179,8 @@ class EkispertMcpClient(TransitClient):
                 lines=[],
             )
         args: dict[str, object] = {
-            # 出発・経由・目的地をコロンで並べる。駅名のまま渡してよい。
-            "viaList": f"{from_station}:{to_station}",
+            # 出発・経由・目的地をコロンで並べる。一意に決まるよう駅コードで渡す。
+            "viaList": f"{_point(from_station)}:{_point(to_station)}",
             "answerCount": 1,
         }
         if arrive_by is not None:
@@ -170,9 +198,17 @@ class EkispertMcpClient(TransitClient):
         await self._initialize()
         data = await self._rpc("tools/call", {"name": name, "arguments": arguments})
         result = data["result"]
-        if result.get("isError"):
-            raise RuntimeError(f"駅すぱあと MCP がエラーを返しました: {_text_of(result)}")
-        return json.loads(_text_of(result))
+        text = _text_of(result)
+        try:
+            body = json.loads(text)
+        except json.JSONDecodeError:
+            body = None
+        # 駅すぱあと API のエラーは本文に {status, message} で返る（isError が付くこともある）。
+        if isinstance(body, dict) and "status" in body and "message" in body:
+            raise RuntimeError(f"駅すぱあと API がエラーを返しました（{body['status']}）: {body['message']}")
+        if result.get("isError") or body is None:
+            raise RuntimeError(f"駅すぱあと MCP がエラーを返しました: {text[:200]}")
+        return body
 
     async def _initialize(self) -> None:
         async with self._ready:
@@ -186,6 +222,10 @@ class EkispertMcpClient(TransitClient):
                     "clientInfo": {"name": "shiki-meguri", "version": "1.0"},
                 },
             )
+            # いまのサーバーはセッションを発行しないが、MCP の仕様では発行されたら
+            # 以後の要求に付けて返す決まり。付いてきたときだけ拾う。
+            if self._session_id:
+                self._headers["Mcp-Session-Id"] = self._session_id
             await self._notify("notifications/initialized")
             self._initialized = True
 
@@ -196,6 +236,7 @@ class EkispertMcpClient(TransitClient):
             body["params"] = params
         res = await self._client.post(self._url, json=body, headers=self._headers)
         res.raise_for_status()
+        self._session_id = self._session_id or res.headers.get("mcp-session-id")
         data = _decode(res)
         if "error" in data:
             raise RuntimeError(f"駅すぱあと MCP がエラーを返しました: {data['error']}")
@@ -206,6 +247,11 @@ class EkispertMcpClient(TransitClient):
             self._url, json={"jsonrpc": "2.0", "method": method}, headers=self._headers
         )
         res.raise_for_status()
+
+
+def _point(station: str) -> str:
+    """viaList に並べる一点。知っている駅はコード、それ以外は名前のまま。"""
+    return EKISPERT_CODES.get(station, station)
 
 
 def _decode(res: httpx.Response) -> dict:
@@ -263,14 +309,24 @@ def _leg_from_course(from_station: str, to_station: str, body: dict) -> TransitL
 
 
 def _oneway_fare(course: dict) -> int:
-    """片道の合計運賃。区間ごとの Fare ではなく FareSummary を採る。"""
+    """片道で実際に払う額。運賃（FareSummary）と料金（ChargeSummary）の合計。
+
+    新幹線や有料特急を使う経路では、運賃とは別に特急料金がかかる。
+    運賃だけを採ると、東京→大宮（新幹線）が 620 円と出て、実際の 1,710 円より
+    大幅に安く見える。受取場所の比較もこの額で行うので、料金まで足す。
+    料金は駅すぱあとが既定で選ぶ席種（自由席など）のもの。
+    """
 
     prices = _as_list(course.get("Price"))
-    for kind in ("FareSummary", "Fare"):
-        for price in prices:
-            if price.get("kind") == kind:
-                return int(price.get("Oneway", 0))
-    return 0
+
+    def summary(kind: str, fallback: str) -> int:
+        for name in (kind, fallback):
+            for price in prices:
+                if price.get("kind") == name:
+                    return int(price.get("Oneway", 0))
+        return 0
+
+    return summary("FareSummary", "Fare") + summary("ChargeSummary", "")
 
 
 

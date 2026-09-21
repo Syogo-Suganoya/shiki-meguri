@@ -39,8 +39,20 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
 
     # -------------------------------------------------------------- 利用者
 
+    def require_known_station(*stations: str) -> None:
+        """駅は選択肢の中からだけ受け付ける。
+
+        駅名は経路探索や Gemini への材料に入る。フォーム以外の口からも
+        任意の文字列を流し込めないよう、全ての入口で同じ一覧と照らす。
+        """
+
+        for station in stations:
+            if station not in STATION_COORDS:
+                raise HTTPException(400, f"対応していない駅です: {station}")
+
     @router.post("/users")
     async def register_user(req: RegisterUserRequest):
+        require_known_station(req.home_station)
         user = await orchestrator.register_user(
             req.uid,
             req.home_station,
@@ -68,9 +80,7 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
     async def start_intake(req: StartIntakeRequest):
         """入力フォームからの受付。利用者登録から衣装候補までを一度に進める。"""
 
-        for station in (req.venue_station, req.home_station):
-            if station not in STATION_COORDS:
-                raise HTTPException(400, f"対応していない駅です: {station}")
+        require_known_station(req.venue_station, req.home_station)
         return await _guard(
             orchestrator.start_from_form(
                 uid=req.uid,
@@ -85,6 +95,7 @@ def build_router(orchestrator: Orchestrator) -> APIRouter:
 
     @router.post("/events")
     async def create_event(req: CreateEventRequest):
+        require_known_station(req.venue_station)
         if req.type is not None:
             event_type, basis = req.type, "本人が明示"
         elif req.message:

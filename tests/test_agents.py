@@ -347,3 +347,18 @@ async def test_受取済みなら衣装を変えられない(orchestrator: Orche
         await orchestrator.propose_reservation(
             event.event_id, event.candidates[1].outfit_id, replace=True
         )
+
+
+async def test_返却の知らせは残り時間に単位を付けて伝える(orchestrator: Orchestrator, deps: Deps):
+    """数字だけ渡すと、文面を書く側が「45日」のように単位を補ってしまう。"""
+
+    event = await _prepare(orchestrator)
+    event, _ = await orchestrator.propose_reservation(event.event_id, event.candidates[0].outfit_id)
+    consent = event.pending_consent()
+    event = await orchestrator.decide_consent(event.event_id, consent.consent_id, True)
+    deps.clock.set(event.return_plan.due_at - timedelta(minutes=45))
+
+    _, alert = await orchestrator.check_return(event.event_id)
+
+    assert alert is not None
+    assert "残り45分" in alert.message

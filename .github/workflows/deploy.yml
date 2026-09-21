@@ -82,15 +82,29 @@ jobs:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/api:${{ github.sha }}
-          # 秘密情報は焼き込まず Secret Manager から注入する。
+          # 本番は実 API で動かす。mock のままだと Gemini も駅すぱあとも使っていないことになる。
+          # 手で足した変数や、もう使わない変数が残らないよう、毎回ここに書いたものだけにする。
+          env_vars_update_strategy: overwrite
           env_vars: |-
             APP_ENV=prod
             AGENT_TRANSPORT=inproc
             DB_DRIVER=firestore
             GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }}
+            GEMINI_MODE=live
+            GEMINI_MODEL=${{ vars.GEMINI_MODEL || 'gemini-3.5-flash-lite' }}
+            EKISPERT_MODE=live
+          # 秘密情報は焼き込まず Secret Manager から注入する。
+          secrets_update_strategy: overwrite
+          secrets: |-
+            GEMINI_API_KEY=gemini-api-key:latest
+            EKISPERT_API_KEY=ekispert-api-key:latest
 
       - name: 疎通確認
         run: |
           url="${{ steps.deploy.outputs.url }}"
           echo "deployed: $url"
-          curl -fsS --retry 5 --retry-delay 5 "$url/health"
+          health=$(curl -fsS --retry 5 --retry-delay 5 "$url/health")
+          echo "$health"
+          # 本番が mock のまま出ていたら落とす（キーの注入漏れ・モード指定漏れ）。
+          echo "$health" | jq -e '.modes.gemini == "live" and .modes.ekispert == "live"' > /dev/null \
+            || { echo "::error::本番の外部 API が mock のままです"; exit 1; }
