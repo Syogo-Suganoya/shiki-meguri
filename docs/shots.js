@@ -62,7 +62,7 @@ async function main() {
     await page.click(selector);
   };
 
-  await page.goto(`${BASE}/ui/console.html`, { waitUntil: "networkidle0" });
+  await page.goto(`${BASE}/console.html`, { waitUntil: "networkidle0" });
   await waitFor("式の予定");
   if (await page.$("#stage form")) {
     await shot("01-plan", 1060);

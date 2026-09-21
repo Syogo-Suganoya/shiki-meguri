@@ -27,6 +27,16 @@ async def test_疎通確認の口が生きている(client: httpx.AsyncClient):
     assert res.json()["modes"] == {"gemini": "mock", "ekispert": "mock"}
 
 
+async def test_画面はルートから配る(client: httpx.AsyncClient):
+    top = await client.get("/")
+    assert top.status_code == 200 and "シキめぐり" in top.text
+    app_page = await client.get("/console.html")
+    assert app_page.status_code == 200
+    # 画面をルートに置いても、API と疎通確認の口は取られない。
+    assert (await client.get("/api/stations")).status_code == 200
+    assert (await client.get("/health")).json()["service"] == "api"
+
+
 async def test_デモ動線が最後まで通る(client: httpx.AsyncClient):
     seeded = (await client.post("/api/demo/seed", json={"scenario": "wedding"})).json()
     event_id = seeded["event_id"]

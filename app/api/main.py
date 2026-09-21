@@ -12,7 +12,6 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.agents.deps import build_deps
@@ -76,10 +75,7 @@ def _effective(mode: str, key: str) -> str:
     return "live" if mode == "live" and key else "mock"
 
 
-@app.get("/")
-async def root() -> RedirectResponse:
-    return RedirectResponse("/ui/")
-
-
+# 画面はルートから配る。/api・/health などのルートは上で先に登録してあるので、
+# ここに落ちてくるのはそれ以外のパスだけ。マウントは必ず最後に置く。
 if WEB_ROOT.is_dir():
-    app.mount("/ui", StaticFiles(directory=WEB_ROOT, html=True), name="ui")
+    app.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")
