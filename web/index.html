@@ -53,6 +53,13 @@ h1 .kei{color:var(--kei)}
   background:var(--kei);color:#fff;transition:opacity .18s;
 }
 .cta:hover{opacity:.86}
+/* デモの断り。アプリを開く前に読める位置に置く。 */
+.demo{
+  max-width:620px;margin:22px auto 0;padding:12px 18px;text-align:left;
+  background:#fbf6e9;border:1px solid var(--line);border-left:4px solid var(--kin);
+  font-size:.82rem;line-height:1.85;color:var(--sub);
+}
+.demo b{color:var(--sumi);font-weight:500}
 
 section{padding:52px 0;border-top:1px solid var(--line)}
 h2{font-family:var(--mincho);font-size:1.5rem;font-weight:700;letter-spacing:.16em;margin-bottom:10px;display:flex;align-items:center;gap:14px}
@@ -109,6 +116,12 @@ footer{padding:40px 0;text-align:center;border-top:1px solid var(--line);color:v
   <div class="cta-row">
     <a class="cta" href="./console.html">アプリを開く</a>
   </div>
+
+  <p class="demo" role="note">
+    <b>デモ版です。</b>レンタル事業者・衣装・受取場所・予約番号は架空のデータで、
+    実際の予約や支払いは発生しません。<br />
+    当日の経路・所要時間・運賃は駅すぱあと API、案内の文章は Gemini による実際の結果です。
+  </p>
 </div></header>
 
 <section id="trouble"><div class="wrap">
@@ -147,42 +160,43 @@ footer{padding:40px 0;text-align:center;border-top:1px solid var(--line);color:v
     <div class="step"><div>
       <h3>式の予定を入れる</h3>
       <p>種別・日時・会場の最寄り駅・出発する駅を選びます。誰の式かは訊かれません。</p>
-      <div class="shot"><img src="./shots/01-plan.png" width="1120" height="1010" loading="lazy"
+      <div class="shot"><img src="./shots/01-plan.png" width="1120" height="1060" loading="lazy"
         alt="式の予定を入力するフォーム。式の種別、開式の日時、会場の最寄り駅、出発する駅を選ぶ" /></div>
     </div></div>
 
     <div class="step"><div>
       <h3>内容を確かめる</h3>
       <p>ここを間違えると当日の逆算がまるごとずれます。登録する前に一度見せます。</p>
-      <div class="shot"><img src="./shots/02-check.png" width="1120" height="640" loading="lazy"
+      <div class="shot"><img src="./shots/02-check.png" width="1120" height="690" loading="lazy"
         alt="入力した予定の確認画面。種別・開式・会場・出発する駅が並び、この予定で始めるボタンがある" /></div>
     </div></div>
 
     <div class="step"><div>
       <h3>衣装をえらぶ</h3>
       <p>候補が出ます。えらんでも、この時点ではまだ予約は入りません。</p>
-      <div class="shot"><img src="./shots/03-outfit.png" width="1120" height="730" loading="lazy"
+      <div class="shot"><img src="./shots/03-outfit.png" width="1120" height="850" loading="lazy"
         alt="衣装の候補が3件並ぶ画面。名前・色・サイズ・事業者・料金が出ている" /></div>
     </div></div>
 
     <div class="step"><div>
       <h3>金額を確かめて承認する</h3>
-      <p>受取場所と出発時刻、内訳と合計を見て承認します。ここで初めて予約が入ります。承認するまで、エージェントは1円も確定しません。</p>
-      <div class="shot"><img src="./shots/04-confirm.png" width="1120" height="740" loading="lazy"
+      <p>受取場所と出発時刻、内訳と合計を見て承認します。ここで初めて予約が入ります。承認するまで、エージェントは1円も確定しません。
+        （デモ版では、承認しても実際の予約・支払いは発生しません）</p>
+      <div class="shot"><img src="./shots/04-confirm.png" width="1120" height="860" loading="lazy"
         alt="確認画面。受取場所と当日の出発時刻、レンタル料と受取手数料の内訳、合計金額、承認して確定するボタン" /></div>
     </div></div>
 
     <div class="step"><div>
       <h3>当日の流れが決まる</h3>
       <p>開式から逆算した一日が出ます。「いま」の位置が入るので、どこまで進んだかが分かります。</p>
-      <div class="shot"><img src="./shots/05-day.png" width="1120" height="1010" loading="lazy"
+      <div class="shot"><img src="./shots/05-day.png" width="1120" height="1060" loading="lazy"
         alt="当日の流れ。出発から受取・着替え・移動・開式・返却期限までが時刻つきで並ぶ" /></div>
     </div></div>
 
     <div class="step"><div>
       <h3>あとは「AIに相談」から</h3>
       <p>右下のボタンでいつでも開けます。返却期限の注意もここに届きます。</p>
-      <div class="shot"><img src="./shots/06-chat.png" width="1120" height="840" loading="lazy"
+      <div class="shot"><img src="./shots/06-chat.png" width="1120" height="890" loading="lazy"
         alt="右側に開いた「AIに相談」のサイドバー。受付から予約確定までのやりとりが並んでいる" /></div>
     </div></div>
   </div>

@@ -33,6 +33,13 @@
   .dualband .k{background:repeating-linear-gradient(90deg,var(--kei) 0 40px,#fff 40px 80px)}
   .dualband .c{background:repeating-linear-gradient(90deg,var(--chou) 0 40px,#e8e6ee 40px 80px)}
 
+  /* ---------------------------------------------------------- デモの断り */
+  /* どの画面にいても目に入るように、見出しの上に常に出す。 */
+  .demo-note{background:#fbf6e9;border-bottom:1px solid var(--line);padding:6px 24px;font-size:12px;color:var(--muted);line-height:1.6}
+  .demo-note .inner{max-width:1060px;margin:0 auto}
+  .demo-note b{color:var(--text);font-weight:500}
+  .demo-gate{margin-top:14px;padding:8px 12px;background:#fbf6e9;border-left:3px solid var(--kin);font-size:12.5px;line-height:1.6}
+
   /* ---------------------------------------------------------- 式の見出し */
   .masthead{background:var(--panel);border-bottom:1px solid var(--line);padding:15px 24px}
   .masthead .inner{max-width:1060px;margin:0 auto;display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
@@ -242,6 +249,11 @@
 </head>
 <body>
 <div class="dualband"><div class="k"></div><div class="c"></div></div>
+
+<div class="demo-note" role="note"><div class="inner">
+  <b>デモ版です。</b>レンタル事業者・衣装・受取場所・予約番号は架空のデータで、実際の予約や支払いは発生しません。
+  当日の経路・所要時間・運賃は駅すぱあと API、案内の文章は Gemini の実際の結果です。
+</div></div>
 
 <div class="masthead"><div class="inner">
   <a class="home" href="./index.html">シキめぐり<small>機能と使い方</small></a>
@@ -617,7 +629,8 @@ async function renderConfirm(el) {
       <button class="btn primary big" id="approve">承認して確定する</button>
       <button class="btn" id="reject">やめておく</button>
     </div>
-    <div class="gate-note">承認するまで、エージェントは予約も生成も実行しません。金額の発生する操作はすべてここを通ります。</div>
+    <div class="gate-note">承認するまで、エージェントは予約も延長も実行しません。金額の発生する操作はすべてここを通ります。</div>
+    <div class="demo-gate">デモ版のため、承認しても実際の予約・支払いは発生しません。レンタル事業者と料金は架空のものです。</div>
     ${c.action === "reserve" ? `<details class="compare"><summary>ほかの受取場所とくらべる</summary>
       <div id="compare" style="margin-top:12px" class="muted">読み込んでいます…</div></details>` : ""}`;
   $("approve").addEventListener("click", () => decide(c.consent_id, true));

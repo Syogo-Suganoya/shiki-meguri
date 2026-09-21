@@ -65,29 +65,29 @@ async function main() {
   await page.goto(`${BASE}/ui/console.html`, { waitUntil: "networkidle0" });
   await waitFor("式の予定");
   if (await page.$("#stage form")) {
-    await shot("01-plan", 1010);
+    await shot("01-plan", 1060);
     await click("#intake-form button[type=submit]");
     await waitFor("この予定で進めますか");
-    await shot("02-check", 640);
+    await shot("02-check", 690);
     await click("#intake-go");
   } else {
     throw new Error("入力フォームが出なかった。予定の登録前の画面から撮る必要がある。");
   }
 
   await waitFor("衣装をえらぶ");
-  await shot("03-outfit", 730);
+  await shot("03-outfit", 850);
 
   await click("#stage button[data-outfit]");
   await waitFor("この内容で確定しますか");
-  await shot("04-confirm", 740);
+  await shot("04-confirm", 860);
 
   await click("#approve");
   await waitFor("当日の流れ");
-  await shot("05-day", 1010);
+  await shot("05-day", 1060);
 
   await click("#talk-open");
   await sleep(900);
-  await shot("06-chat", 840);
+  await shot("06-chat", 890);
 
   await browser.close();
 }
