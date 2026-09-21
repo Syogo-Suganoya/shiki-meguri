@@ -7,7 +7,7 @@
 #
 #   有効化するとき:
 #     Settings → Secrets and variables → Actions → Variables に ENABLE_CD=true を追加
-#     （事前に DEPLOY.md「パターン C」の Workload Identity 連携を済ませておくこと）
+#     （事前に GCP 側で Workload Identity 連携を済ませておくこと）
 #
 #   一時的に止めたいだけなら ENABLE_CD を false にするか、
 #   Actions タブ右上の "..." → Disable workflow でも止められる。
@@ -37,6 +37,11 @@ jobs:
     # ここが CD のオン／オフのスイッチ。
     if: vars.ENABLE_CD == 'true'
     runs-on: ubuntu-latest
+
+    # リポジトリのトップに「Deployments」として出す。URL はデプロイした Cloud Run のもの。
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
 
     permissions:
       contents: read
@@ -77,13 +82,12 @@ jobs:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/api:${{ github.sha }}
-          # 秘密情報は焼き込まず Secret Manager から注入する（DEPLOY.md 参照）。
+          # 秘密情報は焼き込まず Secret Manager から注入する。
           env_vars: |-
             APP_ENV=prod
             AGENT_TRANSPORT=inproc
             DB_DRIVER=firestore
             GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }}
-            AGENT_SPEND_LIMIT_YEN=0
 
       - name: 疎通確認
         run: |

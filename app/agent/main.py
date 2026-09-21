@@ -32,7 +32,6 @@ async def health() -> dict:
         "modes": {
             "gemini": settings.gemini_mode,
             "ekispert": settings.ekispert_mode,
-            "rental": settings.rental_mode,
             "db": settings.db_driver,
         },
     }

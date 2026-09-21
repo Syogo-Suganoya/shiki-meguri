@@ -1,4 +1,4 @@
-"""環境変数だけで mock / live を切り替える（設計書 §8）。
+"""環境変数だけで mock / live を切り替える。
 
 キーが揃うまでは全て mock で完結し、`docker compose up` だけで
 デモシナリオが最後まで通ることを保証する。
@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     # 外部サービスの実接続切替
     gemini_mode: Mode = "mock"
     ekispert_mode: Mode = "mock"
-    rental_mode: Mode = "mock"
 
     # memory はテスト専用。開発はエミュレータ、本番は Firestore を使う。
     db_driver: Literal["memory", "firestore"] = "firestore"
@@ -35,9 +34,8 @@ class Settings(BaseSettings):
     agent_transport: Literal["inproc", "http"] = "inproc"
     agent_base_url: str = "http://agent:8081"
 
-    # --- ガバナンス（設計書 §7）-------------------------------------------
-    # 金銭確定はエージェント権限外。ここを超える提案は必ず同意ゲートを通す。
-    agent_spend_limit_yen: int = 0
+    # --- ガバナンス --------------------------------------------
+    # 金銭が動く操作は金額にかかわらず本人承認を通す。上限の設定は持たない。
     # events の TTL（式終了 + N日で自動削除）
     event_ttl_days: int = 7
     # 会場到着の余裕（分）

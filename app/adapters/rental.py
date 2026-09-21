@@ -1,4 +1,4 @@
-"""レンタル事業者アダプタ（設計書 §9「実レンタル事業者連携（モックAPI）」）。
+"""レンタル事業者アダプタ（MVP ではモック）。
 
 在庫検索・受取地点・予約・延長を 1 つの口にまとめる。MVP では mock のみ。
 予約と延長は「金銭が動く操作」なので、必ず同意ゲート通過後に呼ばれる
@@ -146,7 +146,7 @@ class MockRentalClient(RentalClient):
             ),
         ]
         if category.needs_dresser:
-            # 着付けが要る衣装は自宅配送では成立しない（設計書 §4 手配エージェント）。
+            # 着付けが要る衣装は自宅配送では成立しない。
             options = [o for o in options if o.kind != "home_delivery"]
         if event_type is EventType.FUNERAL:
             # 弔事は即日性が最優先。会場最寄りの店舗のみを提示する。
@@ -170,5 +170,5 @@ class MockRentalClient(RentalClient):
 
 
 def build_rental_client(settings: Settings) -> RentalClient:
-    # live 事業者 API は MVP 対象外（設計書 §9）。常に mock を返す。
+    # live 事業者 API は MVP 対象外。常に mock を返す。
     return MockRentalClient()

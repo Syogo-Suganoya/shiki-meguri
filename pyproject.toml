@@ -11,13 +11,13 @@ dependencies = [
     "httpx>=0.27",
     "python-dateutil>=2.9",
     "google-cloud-firestore>=2.16",
+    # GEMINI_MODE=live で使う。任意依存にするとイメージに入らず、live が起動時に落ちる。
+    "google-genai>=1.0",
 ]
 
 [project.optional-dependencies]
-# mock モードでは import されない。live 切替時にのみ必要。
 gcp = [
     "google-adk>=1.0.0",
-    "google-genai>=0.5.0",
 ]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
 

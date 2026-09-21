@@ -2,7 +2,7 @@
 
 Web PWA（自前チャット UI）の受け口。`AGENT_TRANSPORT=inproc` ならエージェントを同一
 プロセスで動かし（ローカル・単体デプロイ）、`http` なら agent サービスへ
-そのまま中継する（設計書 §4 の 2 サービス構成）。
+そのまま中継する（2 サービス構成）。
 """
 
 from __future__ import annotations

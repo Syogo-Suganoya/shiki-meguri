@@ -1,4 +1,4 @@
-"""Orchestrator（設計書 §4）。
+"""Orchestrator。
 
 会話の受付、シーン判定（慶／弔）、子エージェントへの委譲を担う。
 ADK の SequentialAgent 相当の役割を、外部依存なしで実装している
@@ -352,7 +352,7 @@ class Orchestrator:
     # ------------------------------------------------------------ 定期実行
 
     async def sweep(self) -> dict:
-        """Cloud Scheduler から叩く定期ジョブ（設計書 §4 返却監視）。
+        """Cloud Scheduler から叩く定期ジョブ（返却監視）。
 
         1) 返却期限の監視 2) TTL 超過の削除。
         """

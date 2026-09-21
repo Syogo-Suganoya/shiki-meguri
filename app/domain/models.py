@@ -1,6 +1,6 @@
-"""シキめぐりのドメインモデル（設計書 §6 に対応）。
+"""シキめぐりのドメインモデル。
 
-設計書 §7-2「慶弔情報の最小化」に従い、「誰の式か」「誰が亡くなったか」は
+「慶弔情報の最小化」の方針に従い、「誰の式か」「誰が亡くなったか」は
 型として持たない。保持するのは日時・会場・服装区分のみ。
 """
 
@@ -32,7 +32,7 @@ class EventType(str, Enum):
 
     @property
     def is_mourning(self) -> bool:
-        """弔事。画像保持・提案文の慶弔マナーを切り替える（設計書 §7-1）。"""
+        """弔事。提案文の慶弔マナーや受取先の制約を切り替える。"""
         return self is EventType.FUNERAL
 
 
@@ -278,7 +278,7 @@ class ConsentStatus(str, Enum):
 
 
 class ConsentRequest(BaseModel):
-    """金銭・手配の同意ゲート（設計書 §7-3）。
+    """金銭・手配の同意ゲート。
 
     起案 → 本人承認 → 実行。エージェントは自分で確定できない。
     """
@@ -359,7 +359,7 @@ class Event(BaseModel):
 
 
 class AuditLog(BaseModel):
-    """audit/{logId} — 追記専用（設計書 §6 / §7-4）。"""
+    """audit/{logId} — 追記専用。"""
 
     log_id: str
     ts: datetime

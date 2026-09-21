@@ -1,4 +1,4 @@
-"""自前チャットの会話フロー（設計書 §4 Orchestrator「会話の受付」）。"""
+"""自前チャットの会話フロー（Orchestrator の「会話の受付」）。"""
 
 from __future__ import annotations
 

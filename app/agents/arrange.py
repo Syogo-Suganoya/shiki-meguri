@@ -1,4 +1,4 @@
-"""手配エージェント（設計書 §4）。
+"""手配エージェント。
 
 受取場所（自宅配送 / 店舗 / ロッカー）を当日の動線コミで比較し、
 最良案を「起案」する。**金銭確定は本人同意必須**のため、このエージェントは
@@ -192,7 +192,6 @@ class ArrangeAgent:
             consent_ref=consent.consent_id,
             payload={
                 "amount_yen": amount,
-                "spend_limit_yen": self._d.settings.agent_spend_limit_yen,
                 "autonomous_execution": False,
                 "comparison": [
                     {
@@ -387,5 +386,5 @@ def _return_plan_of(event_type: EventType, pickup: PickupOption) -> tuple[Return
         return ReturnMethod.STORE, pickup.name
     if pickup.kind == "locker":
         return ReturnMethod.LOCKER, pickup.name
-    # 式後は疲れ・二次会・遠方帰路があるため、店舗に戻らせない（設計書 §2）。
+    # 式後は疲れ・二次会・遠方帰路があるため、店舗に戻らせない。
     return ReturnMethod.CONVENIENCE_STORE, "最寄りのコンビニ"

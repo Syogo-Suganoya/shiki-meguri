@@ -1,4 +1,4 @@
-"""シキめぐりのアーキテクチャ図（設計書 §4・§5）を生成する。
+"""シキめぐりのアーキテクチャ図を生成する。
 
     docker compose --profile docs run --rm docs
 

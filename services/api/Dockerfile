@@ -1,5 +1,5 @@
 # API Gateway（Cloud Run: api）
-# ローカル・CI・本番が同一 Dockerfile を参照する（設計書 §8）。
+# ローカル・CI・本番が同一 Dockerfile を参照する。
 FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

@@ -1,17 +1,20 @@
-"""Gemini アダプタ（設計書 §5 AI）。
+"""Gemini アダプタ。
 
 提案文の生成のみを担い、判断そのものはドメイン側で決める。LLM が落ちても
 サービスが止まらないよう、stub は同じ purpose に対して常に文章を返す。
 
 `mourning=True`（弔事）のときは、祝いの語彙を使わない文面に切り替える
-（設計書 §5「慶弔マナー考慮」）。
+（慶弔マナーを考慮する）。
 """
 
 from __future__ import annotations
 
 import abc
+import logging
 
 from app.config import Settings
+
+logger = logging.getLogger(__name__)
 
 Purpose = str
 
@@ -34,15 +37,31 @@ class StubLlmClient(LlmClient):
 
 
 class GeminiLlmClient(LlmClient):
+    """Gemini で文面を書く。失敗したら stub の文面に落とす。
+
+    提案文は判断の添え物なので、生成に失敗しても手配の流れは止めない。
+    """
+
     def __init__(self, api_key: str, model: str) -> None:
-        self._api_key = api_key
+        from google import genai  # noqa: PLC0415
+
+        self._client = genai.Client(api_key=api_key)
         self._model = model
+        self._fallback = StubLlmClient()
 
     async def compose(
         self, *, purpose: Purpose, context: dict, mourning: bool = False
     ) -> str:
-        from google import genai  # noqa: PLC0415
+        try:
+            text = await self._generate(purpose, context, mourning)
+        except Exception:  # noqa: BLE001 — 生成の失敗で手配を止めない
+            logger.exception("Gemini の生成に失敗したため定型文に落とします: %s", purpose)
+            text = ""
+        return text or await self._fallback.compose(
+            purpose=purpose, context=context, mourning=mourning
+        )
 
+    async def _generate(self, purpose: Purpose, context: dict, mourning: bool) -> str:
         tone = (
             "弔事です。祝意を示す語・華やかな語を使わず、簡潔で落ち着いた敬語で書いてください。"
             if mourning
@@ -56,8 +75,9 @@ class GeminiLlmClient(LlmClient):
             f"事実: {context}\n"
             "120文字以内の日本語で出力してください。"
         )
-        client = genai.Client(api_key=self._api_key)
-        res = await client.aio.models.generate_content(model=self._model, contents=prompt)
+        res = await self._client.aio.models.generate_content(
+            model=self._model, contents=prompt
+        )
         return (res.text or "").strip()
 
 
