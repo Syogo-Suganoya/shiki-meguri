@@ -10,12 +10,12 @@
 from diagrams import Cluster, Diagram, Edge
 from diagrams.gcp.compute import Run
 from diagrams.gcp.database import Firestore
-from diagrams.gcp.devtools import Scheduler
 from diagrams.gcp.ml import AIPlatform
 from diagrams.gcp.operations import Logging
 from diagrams.gcp.security import KeyManagementService
 from diagrams.gcp.storage import Storage
 from diagrams.onprem.client import Users
+from diagrams.programming.language import Python
 
 FONT = "Noto Sans CJK JP"
 
@@ -50,11 +50,11 @@ with Diagram(
     with Cluster("クライアント", graph_attr=cluster_attr):
         client = Users("Web PWA\n自前チャットUI")
 
-    with Cluster("Cloud Run", graph_attr=cluster_attr):
-        api = Run("api\nFastAPI")
-        agent = Run("agent\nADK エージェント")
-
-    scheduler = Scheduler("Cloud Scheduler")
+    # 本番は api と agent を分けず、1 つのサービスの同じプロセスで動かす
+    # （AGENT_TRANSPORT=inproc）。分ける構成は開発用に残してあるだけなので描かない。
+    with Cluster("Cloud Run（shiki-api）", graph_attr=cluster_attr):
+        api = Run("API・画面の配信\nFastAPI")
+        agent = Python("Orchestrator\n衣装・手配・経路・返却監視")
 
     with Cluster("外部API", graph_attr=cluster_attr):
         externals = [
@@ -65,13 +65,12 @@ with Diagram(
 
     with Cluster("データ", graph_attr=cluster_attr):
         firestore = Firestore("Firestore\n式・会話履歴")
-        logging = Logging("Cloud Logging")
+        logging = Logging("Cloud Logging\n監査ログ")
         secrets = KeyManagementService("Secret Manager")
 
-    client >> Edge(label="発言") >> api >> agent
+    client >> Edge(label="発言") >> api >> Edge(label="同じプロセス") >> agent
     # 端末へのプッシュは使わず、エージェント起点の通知も画面が取りに来る。
     api >> Edge(label="通知（アプリ内・ポーリング）", style="dashed") >> client
-    scheduler >> Edge(label="定期実行") >> agent
     agent >> externals
     agent >> Edge(style="dashed") >> [firestore, logging]
     secrets >> Edge(style="dashed") >> agent
