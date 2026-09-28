@@ -85,11 +85,14 @@ class GeminiLlmClient(LlmClient):
             config={
                 "system_instruction": SYSTEM_INSTRUCTION,
                 "temperature": 0.3,
-                "max_output_tokens": 256,
+                # 思考に使うトークンもこの上限に数えられる。狭いと本文の途中で切れる。
+                "max_output_tokens": 1024,
             },
         )
         text = (res.text or "").strip()
-        reason = reject_reason(text, facts)
+        finish = _finish_reason(res)
+        # 上限で打ち切られた文は「当日は吉祥寺を13:45にご」のように途中で終わる。
+        reason = f"途中で打ち切られた（{finish}）" if finish not in (None, "STOP") else reject_reason(text, facts)
         if reason:
             logger.warning("Gemini の文面を使わず定型文に落とします（%s）: %s", reason, purpose)
             return ""
@@ -97,6 +100,14 @@ class GeminiLlmClient(LlmClient):
 
 
 # ------------------------------------------------------- プロンプトの組み立てと検査
+
+
+def _finish_reason(res) -> str | None:
+    """応答が終わった理由（STOP / MAX_TOKENS など）。取れなければ None。"""
+
+    candidates = getattr(res, "candidates", None) or []
+    reason = getattr(candidates[0], "finish_reason", None) if candidates else None
+    return getattr(reason, "name", None) or (str(reason) if reason else None)
 
 SYSTEM_INSTRUCTION = (
     "あなたは冠婚葬祭レンタルの案内文を書く係です。\n"

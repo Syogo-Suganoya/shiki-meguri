@@ -112,6 +112,18 @@ async def test_返却を尋ねると期限を答える(orchestrator: Orchestrato
     assert "返却" in _texts(messages)
 
 
+async def test_状況を尋ねても内部の状態名は見せない(orchestrator: Orchestrator):
+    await orchestrator.handle_message("u1", "最寄りは吉祥寺です")
+    await orchestrator.handle_message("u1", "明日16時、品川の結婚式")
+    await orchestrator.handle_message("u1", "1番")
+    await orchestrator.handle_message("u1", "承認")
+
+    messages, _ = await orchestrator.handle_message("u1", "いまの状況は？")
+    text = _texts(messages)
+    assert "当日の流れも決まった" in text
+    assert not any(s.value in text for s in EventStatus)
+
+
 async def test_弔事はチャットからも判定される(orchestrator: Orchestrator):
     _, event = await orchestrator.handle_message(
         "u1", "訃報がありました。明日13時、上野の斎場です"

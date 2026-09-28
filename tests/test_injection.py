@@ -166,6 +166,26 @@ async def test_乗っ取られた出力は捨てて定型文を出す():
     assert "evil" not in text
 
 
+async def test_上限で打ち切られた文は捨てて定型文を出す():
+    """思考のトークンで上限を食うと、本文が途中で切れたまま返ってくる。"""
+
+    client = GeminiLlmClient("dummy-key", "gemini-3.5-flash-lite")
+    fake = _FakeGemini("当日は東京を13:49にご")
+    cut = type("Res", (), {"text": "当日は東京を13:49にご",
+                           "candidates": [type("C", (), {"finish_reason": "MAX_TOKENS"})()]})()
+
+    async def generate_content(**kwargs):
+        return cut
+
+    fake.aio.models.generate_content = generate_content
+    client._client = fake
+    ctx = {"departure": "13:49", "home_station": "東京", "pickup_label": "品川店", "ceremony": "15:00"}
+
+    text = await client.compose(purpose="timeline_summary", context=ctx)
+
+    assert text == await StubLlmClient().compose(purpose="timeline_summary", context=ctx)
+
+
 # ---------------------------------------------------------------- API の入口
 
 

@@ -120,6 +120,26 @@ services:
       api:
         condition: service_healthy
 
+  # 提出用のデモ動画を撮る（_video/demo.mp4）。`docker compose --profile video up --build video`
+  video:
+    profiles: ["video"]
+    image: shiki-meguri-shots
+    build:
+      context: .
+      dockerfile: services/shots/Dockerfile
+    user: root
+    working_dir: /work
+    environment:
+      BASE_URL: ${VIDEO_BASE_URL:-http://api:8080}
+      NODE_PATH: /usr/src/app/node_modules
+      TZ: Asia/Tokyo
+    entrypoint: ["node", "docs/video.js"]
+    volumes:
+      - .:/work
+    depends_on:
+      api:
+        condition: service_healthy
+
   # テスト実行用。`docker compose run --rm test`
   test:
     profiles: ["test"]

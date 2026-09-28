@@ -53,6 +53,15 @@ docker compose --profile docs run --rm docs
 
 # 紹介ページに載せる画面の写しを撮り直す（web/shots/*.png）
 docker compose --profile shots up --build shots
+
+# 提出用のデモ動画を撮る（_video/demo.mp4。コミットしません）
+docker compose --profile video up --build --abort-on-container-exit video
+```
+
+デモ動画は、ローカルの api ではなく本番に繋いで撮ることもできます。
+
+```bash
+VIDEO_BASE_URL=https://shiki-api-988743172157.asia-northeast1.run.app docker compose --profile video up --build --abort-on-container-exit video
 ```
 
 ホストのポートが他プロジェクトと衝突するときは逃がします（コンテナ間の番号は変わりません）。

@@ -443,8 +443,22 @@ def _candidate_list(event: Event) -> str:
     return "衣装の候補です。番号でお選びください。\n" + "\n".join(lines)
 
 
+# 状態の識別子は利用者に見せない。画面の段階と同じ言葉で言い換える。
+STATUS_LABEL: dict[EventStatus, str] = {
+    EventStatus.DRAFT: "予定をうかがったところ",
+    EventStatus.OUTFIT_PROPOSED: "衣装をおえらびいただく段階",
+    EventStatus.AWAITING_CONSENT: "ご承認をお待ちしている段階",
+    EventStatus.RESERVED: "予約が確定したところ",
+    EventStatus.ROUTED: "予約が確定し、当日の流れも決まった段階",
+    EventStatus.IN_PROGRESS: "式の当日",
+    EventStatus.RETURN_PENDING: "ご返却をお待ちしている段階",
+    EventStatus.COMPLETED: "ご返却まで済んだ段階",
+    EventStatus.CANCELLED: "お取りやめになった状態",
+}
+
+
 def _status_summary(event: Event) -> str:
-    parts = [f"いまの状態は「{event.status.value}」です。"]
+    parts = [f"いまは{STATUS_LABEL.get(event.status, 'お手続きの途中')}です。"]
     if event.route and event.route.departure_at:
         parts.append(f"出発は{event.route.departure_at:%H:%M}の予定です。")
     if event.return_plan:
